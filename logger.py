@@ -1,31 +1,35 @@
 from LogMonitor import Scanner, MongoParser, FileWatcher
-import re, os, threading, queue, time
-STREAM_FILE = '/home/joe/Desktop/prgms/other/stream.txt'
-
-def log_monitor(outq):
-    F_Watch = FileWatcher(STREAM_FILE)
-    F_Watch.start(outq)
+from multiprocessing import Process, Queue, freeze_support
+import re, os, time, signal
+STREAM_FILE = '/var/log/mongodb/mongod.log'
+scan = Scanner()
+mongo = MongoParser()
 
 def parse_log(data):
-    scan = Scanner()
-    #mongo = MongoParser()
-    
-    with open(STREAM_FILE, 'r') as f:
-        if f.seekable():
-            f.seek(start_index)
-        print([t for t in scan.tokenize(f.read())])
+    print([t.basic_display() for t in mongo.parse(scan.tokenize(data))])
 
 if __name__ == '__main__':
-    scan = Scanner()
+    """
+    freeze_support()
     F_Watch = FileWatcher(STREAM_FILE)
-    outq = queue.Queue()
-    mon = threading.Thread(target=F_Watch.start, args=(outq,))
-    mon.start()
-    while True:
-        line = outq.get()
-        # If the queue is empty then the process stopped.
-        if line is None:
-            raise Exception("Shutting down...")
+    print('"Ctrl-C" to end the process:')
+
+    outq = Queue()
+    proc = Process(target=F_Watch.watch_queue, args=(outq,)).start()
+    # Set up the sinal handlers for the thread before it is created.
+    signal.signal(signal.SIGTERM, FileWatcher._handle_signal)
+    signal.signal(signal.SIGINT, FileWatcher._handle_signal)
+    try:
+        time.sleep(0.2)
+        while True:
+            line = outq.get()
+            # If the queue is empty then the process stopped.
+            if line is None:
+                raise Exception("Shutting down...")
             # Print out server response.
-        print([t for t in scan.tokenize(line)])
-        time.sleep(0.1)
+            parse_log(line)
+            time.sleep(0.1)
+    except Exception as e:
+        print(e)
+        outq.close()
+    """
