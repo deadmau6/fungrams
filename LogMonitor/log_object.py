@@ -23,7 +23,7 @@ class SeverityLevel:
 class NodeError:
     """docstring for NodeError"""
     def __init__(self, trace, stack):
-        self.arg = arg
+        self.trace = arg
         
 
 class MongoLog:
