@@ -1,5 +1,5 @@
 from .parser import Parser
-from .log_objects import MongoLog
+from .log_object import MongoLog
 
 class MongoParser(Parser):
 

@@ -69,7 +69,7 @@ if __name__ == '__main__':
     #mp_pipe_testing(limit=5)
     while True:
         try:
-            readable, writable, errors = select.select(dispatch, busses, busses, 1)
+            readable, writable, errors = select.select(dispatch, busses, busses, 0.5)
             if not readable:
                 usr_msg = input('--> ')
                 if not usr_msg == '':

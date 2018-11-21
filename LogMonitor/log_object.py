@@ -20,6 +20,12 @@ class SeverityLevel:
     def __str__(self):
         return f'({self.level}, {self.value}, {self.name})'
 
+class NodeError:
+    """docstring for NodeError"""
+    def __init__(self, trace, stack):
+        self.arg = arg
+        
+
 class MongoLog:
     """The MongoLog class is an object representation of each parsed mongo log entry."""
     def __init__(self, line_num, timestamp, severity, component, context, message):
@@ -57,9 +63,54 @@ class MongoLog:
 
 class NodeLog:
     """docstring for NodeLog"""
-    def __init__(self, line_num, timestamp, level, status):
+    def __init__(self, entry_num, line_num, timestamp, level, status, msg, error):
+        self.entry_num = entry_num
         self.line_num = line_num
         self.timestamp = timestamp
         self.level = level
-        self.status = status
-        
+        self.status = status if status else "UNKOWN"
+        self.error = error
+
+    def time_string(self):
+        hour, minuets, sec = self.timestamp[1]
+        return f'{hour}:{minuets}:{sec}'
+
+    def date_string(self):
+        year, month, day = self.timestamp[0]
+        return f'{year}/{month}/{day}'
+
+    def timestamp_string(self):
+        return f'Date: {self.date_string()}, Time: {self.time_string()}'
+
+    def stack_frames(self, count=-1):
+        raw_frames = self.error['stack']['Frames']
+        frames = [f'\t|{f}' for f in raw_frames[:min(len(raw_frames), count)]]
+        return '\n'.join(frames)
+
+    def error_body_format(self):
+        stack = self.error['stack']
+        if self.status == 'UNKOWN':
+            return "Not implemented yet"
+        #trace = self.error.trace
+        name =  stack['Name']
+        message =  stack['Message']
+        frames = self.stack_frames(count=5)
+        header = f'{name}: {self.status}'
+        body = f'Raw Message: "{message}"'
+        return f'| {header}\n\t| {body}\n\t| Stack Frames(5):\n{frames}'
+
+    def basic_display(self):
+        return f'Entry: ({self.entry_num}, {self.line_num}), {self.timestamp_string()}, {self.level}, {self.status}'
+    
+    def everything_display(self):
+        title = f'<--- Log Number: {self.entry_num}  Level: {self.level.upper()} Log Line Number: {self.line_num}. --->'
+        body = None
+        if self.level == 'error':
+            body = self.error_body_format()
+        return f'{title}\n\t{body}\n'
+
+    def display(self, level=0):
+        if level == 0:
+            print(self.basic_display())
+        else:
+            print(self.everything_display())
