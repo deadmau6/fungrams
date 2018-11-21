@@ -58,7 +58,7 @@ class NodeParser(Parser):
     def _node_error(self):
         error_cls_name = self.match('WORD')
 
-        error_code = self._error_code() if self.current.typ == 'SBRACKET' else 'NO CODE'
+        error_code = self._error_code() if self.current.typ == 'SBRACKET' else None
         
         self.match('COLON')
 
@@ -164,10 +164,10 @@ class NodeParser(Parser):
         return ''.join(code)
 
     def _is_stack_frame(self):
-        return self.current.typ == 'WORD' and self.current.value == 'at'
+        return self.current.typ == 'WORD' and (self.current.value == 'at' or self.current.value == 'From')
 
     def _stack_frame(self):
-        self.match('WORD', 'at')
+        self.match('WORD')
         frame_name = []
         location = None
         line_num = self.current.line

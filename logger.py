@@ -1,6 +1,6 @@
 from LogMonitor import Scanner, MongoParser, NodeParser, FileWatcher
 from multiprocessing import Process, Queue, freeze_support
-import re, os, time, signal
+import re, os, time, signal, json
 STREAM_FILE = '/var/log/mongodb/mongod.log'
 Node_File = '/home/joe/Documents/SavantX/server/logs/app.log'
 scan = Scanner()
@@ -13,7 +13,7 @@ def parse_log(data):
 def parse_node():
     with open(Node_File, 'r') as f:
         for entry in node.parse(scan.tokenize(f.read())):
-            entry.display(level=1)
+            print(entry);
 
 if __name__ == '__main__':
     """
