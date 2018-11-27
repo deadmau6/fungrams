@@ -22,11 +22,12 @@ class SeverityLevel:
 
 class NodeError:
     """docstring for NodeError"""
-    def __init__(self, stack=None, trace=None, name=None, code=None):
+    def __init__(self, stack=None, trace=None, name=None, code=None, compile_time=None):
         self.stack = stack
         self.trace = trace
         self.name = name
         self.code = code
+        self.compile_time = compile_time
         self._is_api_error = False if trace is None else True
 
     def __repr__(self):
@@ -35,6 +36,7 @@ class NodeError:
             'trace': self.trace,
             'name': self.name,
             'code': self.code,
+            'compile_time': self.compile_time,
             '_is_api_error': self._is_api_error
         }
         return f'{node_error}'
@@ -51,10 +53,15 @@ class NodeError:
         frames = [f'\t|{f}' for f in raw_frames[:min(len(raw_frames), count)]]
         return '\n'.join(frames)
 
+    def message(self):
+        raw_msg = self.stack['Message']
+        message = f'Raw Message: {raw_msg}'
+        if self.compile_time:
+            return f'{message}\n\t| Compile Time Message: {self.compile_time}'
+        return message
+
     def error_body_format(self, status='', count=-1):
-        msg = self.stack['Message']
-        message = f'Raw Message: "{msg}"'
-        return f'{self.header(status)}\n\t| {message}\n\t| Stack Frames(5):\n{self.stack_frames(count=5)}'
+        return f'{self.header(status)}\n\t| {self.message()}\n\t| Stack Frames(5):\n{self.stack_frames(count=5)}'
 
 class MongoLog:
     """The MongoLog class is an object representation of each parsed mongo log entry."""

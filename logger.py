@@ -13,7 +13,8 @@ def parse_log(data):
 def parse_node():
     with open(Node_File, 'r') as f:
         for entry in node.parse(scan.tokenize(f.read())):
-            print(entry);
+            #print(entry);
+            entry.display(level=0)
 
 if __name__ == '__main__':
     """
