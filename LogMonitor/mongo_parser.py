@@ -30,7 +30,7 @@ class MongoParser(Parser):
         component = self._component()
         context = self._context()
         message = self._rawmessage()
-        return MongoEntry(line, timestamp, severity, component, context, message)
+        return MongoLog(line, timestamp, severity, component, context, message)
 
     def _rawmessage(self):
         if self.current is None:

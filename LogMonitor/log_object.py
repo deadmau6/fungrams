@@ -98,6 +98,16 @@ class MongoLog:
         else:
             print(self.everything_display())
 
+    def toJSON(self):
+        return {
+            'line_num': self.line_num,
+            'timestamp': self.timestamp,
+            'severity': str(self.severity), 
+            'component': self.component,
+            'context': self.context,
+            'message': self.message
+        }
+
 class NodeLog:
     """docstring for NodeLog"""
     def __init__(self, entry_num, line_num, timestamp, level, status, msg, error):
