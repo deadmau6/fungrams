@@ -185,7 +185,6 @@ class NodeParser(Parser):
         return {
             'Name': error_cls_name,
             'Message': error_msg,
-            'Frames': stack_frames,
         }
 
     def _stack(self, error_name):
@@ -247,6 +246,9 @@ class NodeParser(Parser):
         return ''.join(code)
 
     def _is_stack_frame(self):
+        if self.current == None:
+            return False
+        
         return self.current.typ == 'WORD' and (self.current.value == 'at' or self.current.value == 'From')
 
     def _stack_frame(self):

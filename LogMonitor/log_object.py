@@ -63,6 +63,16 @@ class NodeError:
     def error_body_format(self, status='', count=-1):
         return f'{self.header(status)}\n\t| {self.message()}\n\t| Stack Frames(5):\n{self.stack_frames(count=5)}'
 
+    def toJSON(self):
+        return {
+            'stack': self.stack,
+            'trace': self.trace,
+            'name': self.name,
+            'code': self.code,
+            'compile_time': self.compile_time,
+            'is_api_error': self._is_api_error
+        }
+
 class MongoLog:
     """The MongoLog class is an object representation of each parsed mongo log entry."""
     def __init__(self, line_num, timestamp, severity, component, context, message):
@@ -128,7 +138,6 @@ class NodeLog:
             'error': self.error
         }
         return f'{node_log}'
-        
 
     def time_string(self):
         hour, minuets, sec = self.timestamp[1]
@@ -156,3 +165,13 @@ class NodeLog:
             print(self.basic_display())
         else:
             print(self.everything_display())
+
+    def toJSON(self):
+        return {
+            'entry_num': self.entry_num,
+            'line_num': self.line_num,
+            'timestamp': self.timestamp,
+            'level': self.level,
+            'status': self.status,
+            'error': self.error.toJSON()
+        }

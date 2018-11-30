@@ -4,6 +4,7 @@ from LogMonitor import Scanner, MongoParser, NodeParser
 import json
 
 STREAM_FILE = '/var/log/mongodb/mongod.log'
+Node_File = '/home/joe/Documents/SavantX/server/logs/app.log'
 
 app = Flask(__name__)
 api = Api(app)
@@ -19,11 +20,12 @@ class Logger(Resource):
         super().__init__()
         self.scanner = Scanner()
         self.mongo = MongoParser()
+        self.node = NodeParser()
 
     def get(self):
         logs = []
-        with open(STREAM_FILE, 'r') as f:
-            for entry in self.mongo.parse(self.scanner.tokenize(f.read())):
+        with open(Node_File, 'r') as f:
+            for entry in self.node.parse(self.scanner.tokenize(f.read())):
                 logs.append(entry.toJSON())
         return logs
 
