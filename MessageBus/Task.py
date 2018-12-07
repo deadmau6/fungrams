@@ -11,6 +11,7 @@ class Task:
         self.bus_type = passenger['bus']
 
     def handle(self):
+        time.sleep(2)
         if self.bus_type == 'blue':
             return self.blue_bus()
         elif self.bus_type == 'red':

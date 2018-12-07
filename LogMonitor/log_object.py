@@ -20,6 +20,42 @@ class SeverityLevel:
     def __str__(self):
         return f'({self.level}, {self.value}, {self.name})'
 
+class NodeError:
+    """docstring for NodeError"""
+    def __init__(self, stack=None, trace=None, name=None, code=None):
+        self.stack = stack
+        self.trace = trace
+        self.name = name
+        self.code = code
+        self._is_api_error = False if trace is None else True
+
+    def __repr__(self):
+        node_error = {
+            'stack': self.stack,
+            'trace': self.trace,
+            'name': self.name,
+            'code': self.code,
+            '_is_api_error': self._is_api_error
+        }
+        return f'{node_error}'
+
+    def header(self, status):
+        if self._is_api_error:
+            nm = self.stack['Name']
+            return f'API: {nm} {status}'
+        code = f'[{self.code}]' if self.code else ''
+        return f'NODE: {self.name} {code}'
+
+    def stack_frames(self, count):
+        raw_frames = self.stack['Frames']
+        frames = [f'\t|{f}' for f in raw_frames[:min(len(raw_frames), count)]]
+        return '\n'.join(frames)
+
+    def error_body_format(self, status='', count=-1):
+        msg = self.stack['Message']
+        message = f'Raw Message: "{msg}"'
+        return f'{self.header(status)}\n\t| {message}\n\t| Stack Frames(5):\n{self.stack_frames(count=5)}'
+
 class MongoLog:
     """The MongoLog class is an object representation of each parsed mongo log entry."""
     def __init__(self, line_num, timestamp, severity, component, context, message):
@@ -57,9 +93,49 @@ class MongoLog:
 
 class NodeLog:
     """docstring for NodeLog"""
-    def __init__(self, line_num, timestamp, level, status):
+    def __init__(self, entry_num, line_num, timestamp, level, status, msg, error):
+        self.entry_num = entry_num
         self.line_num = line_num
         self.timestamp = timestamp
         self.level = level
-        self.status = status
+        self.status = status if status else "UNKOWN"
+        self.error = NodeError(**error)
+
+    def __repr__(self):
+        node_log = {
+            'entry_num': self.entry_num,
+            'line_num': self.line_num,
+            'timestamp': self.timestamp,
+            'level': self.level,
+            'status': self.status,
+            'error': self.error
+        }
+        return f'{node_log}'
         
+
+    def time_string(self):
+        hour, minuets, sec = self.timestamp[1]
+        return f'{hour}:{minuets}:{sec}'
+
+    def date_string(self):
+        year, month, day = self.timestamp[0]
+        return f'{year}/{month}/{day}'
+
+    def timestamp_string(self):
+        return f'Date: {self.date_string()}, Time: {self.time_string()}'
+
+    def basic_display(self):
+        return f'Entry: ({self.entry_num}, {self.line_num}), {self.timestamp_string()}, {self.level}, {self.status}'
+    
+    def everything_display(self):
+        title = f'<--- Log Number: {self.entry_num}  Level: {self.level.upper()} Log Line Number: {self.line_num}. --->'
+        body = None
+        if self.level == 'error':
+            body = self.error.error_body_format(status=self.status)
+        return f'{title}\n{body}\n'
+
+    def display(self, level=0):
+        if level == 0:
+            print(self.basic_display())
+        else:
+            print(self.everything_display())
