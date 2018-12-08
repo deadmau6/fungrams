@@ -13,7 +13,7 @@ def add_vectors(v, w):
 
 	return new_vect
 
-def scale_vector(vect, scale):
+def scale_vector(scale, vect):
 	
 	new_vect = [0] * len(vect)
 
@@ -23,8 +23,19 @@ def scale_vector(vect, scale):
 
 	return new_vect
 
-def vector_matrix_multi(vect, matrix):
-	
+def linear_combination(scale_a, vect_a, scale_b, vect_b):
+	return add_vectors(scale_vector(scale_a, vect_a), scale_vector(scale_b, vect_b))
+
+def vector_span(v, w, limit=5):
+	# The set of all possible linear_combinations
+	l_span = set()
+	for i in range(-limit, limit):
+		for j in range(-limit, limit):
+			l_span.add(tuple(linear_combination(i, v, j, w)))
+	return l_span
+
+def matrix_vector_multi(matrix, vect):
+	# Also known as linear transform.
 	if len(vect) != len(matrix[0]):
 
 		return "Error: incorrect input format"
