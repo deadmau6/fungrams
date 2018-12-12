@@ -35,6 +35,18 @@ def determinant(matrix):
                 det = det + matrix[a][0]*determinant(sub_m)
             else:
                 det = det - matrix[a][0]*determinant(sub_m)
-        return det
+        return det  
 
+def get_identity(n):
+    identity = []
+    for i in range(n):
+        identity.append([1 if x == i else 0 for x in range(n)])
+    return identity
+
+def get_inverse(matrix):
+    det = determinant(matrix)
+    if det == 0:
+        return "Error: There is no inverse b.c. det(A) = 0"
+
+    
 
