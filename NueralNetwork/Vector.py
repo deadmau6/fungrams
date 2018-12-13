@@ -13,13 +13,15 @@ def add_vectors(v, w):
 
 	return new_vect
 
-def scale_vector(scale, vect):
+def scale_vector(scale, vect, ndigits=None):
 	
 	new_vect = [0] * len(vect)
 
 	for i in range(0, len(vect)):
-
-		new_vect[i] = vect[i] * scale
+		if ndigits:
+			new_vect[i] = round(vect[i] * scale, ndigits)
+		else:
+			new_vect[i] = vect[i] * scale
 
 	return new_vect
 
@@ -45,7 +47,6 @@ def matrix_vector_multi(matrix, vect):
 	for i in range(0, len(vect)):
 
 		for j in range(0, len(vect)):
-
 			new_vect[i] += matrix[j][i] * vect[j]
 
 	return new_vect
