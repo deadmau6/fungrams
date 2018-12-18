@@ -15,6 +15,15 @@ class NodeParser(Parser):
             if self.current is None:
                 break
 
+    def _get_raw_line(self):
+        raw_line = []
+        line_num = self.current.line
+        while self.current.line == line_num:
+            raw_line.append(self.match(None))
+            if self.current is None:
+                break
+        return raw_line
+
     def _next_entry(self):
         # Start at the begining of the next line.
         self._skip_line()
@@ -59,6 +68,9 @@ class NodeParser(Parser):
         error_cls_name = self.match('WORD')
 
         error_code = self._error_code() if self.current.typ == 'SBRACKET' else None
+
+        if self.current.typ != 'COLON':
+            return self._compile_time_error(error_cls_name)
         
         self.match('COLON')
 
@@ -86,6 +98,77 @@ class NodeParser(Parser):
             'stack': stack, 
         }
 
+    def _compile_time_error(self, error_cls_name):
+        msg_size, ct_error, ct_code, ct_message = self._compile_time_message(error_cls_name)
+
+        ct_stack = self._compile_time_stack(ct_error, msg_size)
+        #Skip the trace cause we don't need it.
+        self.match('WORD', 'Trace')
+        for i in range((msg_size + 1)):
+            self._skip_line()
+
+        #Skip the stack cause we already have it.
+        self.match('WORD', 'Stack')
+        for i in range((msg_size + 1)):
+            self._skip_line()
+
+        while self._is_stack_frame():
+            self._skip_line()
+            if self.current is None:
+                break
+
+        return {
+            'name': ct_error,
+            'code': ct_code,
+            'compile_time': ct_message,
+            'stack': ct_stack,
+        }
+
+    def _compile_time_stack(self, error_name, msg_size):
+        error_msg = self._node_message()
+
+        stack_frames = []
+
+        # Skip past the compile time error
+        for i in range(msg_size):
+            self._skip_line()
+        
+        while self._is_stack_frame():
+            stack_frames.append(self._stack_frame())
+            if self.current is None:
+                break
+
+        return {
+            'Name': error_name,
+            'Message': error_msg,
+            'Frames': stack_frames
+        }
+
+    def _compile_time_message(self, first_word):
+        ct_msg = [first_word]
+        ct_msg.extend(self._get_raw_line())
+        ct_error_name = ''
+        ct_error_code = None
+        message_size = 1
+        while True:
+            new_line_start = self.match('WORD')
+            bracket_code = None
+            if self.current.typ == 'SBRACKET':
+                bracket_code = self._error_code()
+            if self.current.typ == 'COLON':
+                self.match('COLON')
+                ct_error_name = new_line_start
+                ct_error_code = bracket_code
+                break
+            ct_msg.append(new_line_start)
+            if bracket_code:
+                ct_msg.extend(['[', bracket_code, ']'])
+            ct_msg.extend(self._get_raw_line())
+            message_size += 1
+            if self.current == None:
+                break
+        return message_size, ct_error_name, ct_error_code, ' '.join(ct_msg) 
+
     def _api_stack(self):
         error_cls_name = self.match('WORD')
         
@@ -102,7 +185,6 @@ class NodeParser(Parser):
         return {
             'Name': error_cls_name,
             'Message': error_msg,
-            'Frames': stack_frames,
         }
 
     def _stack(self, error_name):
@@ -164,6 +246,9 @@ class NodeParser(Parser):
         return ''.join(code)
 
     def _is_stack_frame(self):
+        if self.current == None:
+            return False
+        
         return self.current.typ == 'WORD' and (self.current.value == 'at' or self.current.value == 'From')
 
     def _stack_frame(self):
@@ -176,7 +261,7 @@ class NodeParser(Parser):
                 # Might be a file location.
                 location = self._sframe_location()
 
-            elif self.current.typ == 'PAREN':
+            elif self.current.typ == 'PAREN' and self.current.value == '(':
                 # Either File location or part of name.
                 frame_name.append(self.match('PAREN'))
                 is_loc, paren_stmt = self._sframe_paren()
