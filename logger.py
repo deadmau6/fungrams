@@ -7,14 +7,17 @@ scan = Scanner()
 mongo = MongoParser()
 node = NodeParser()
 
-def parse_log(data):
-    print([t.basic_display() for t in mongo.parse(scan.tokenize(data))])
+def parse_mongo():
+    with open(STREAM_FILE, 'r') as f:
+        for entry in mongo.parse(scan.tokenize(f.read())):
+            #print(entry.toJSON());
+            entry.display(level=0)
 
 def parse_node():
     with open(Node_File, 'r') as f:
         for entry in node.parse(scan.tokenize(f.read())):
-            #print(entry);
-            entry.display(level=0)
+            #print(entry.toJSON());
+            entry.display(level=1)
 
 if __name__ == '__main__':
     """
@@ -42,3 +45,4 @@ if __name__ == '__main__':
         outq.close()
     """
     parse_node()
+    #parse_mongo()
