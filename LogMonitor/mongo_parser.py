@@ -6,7 +6,6 @@ class MongoParser(Parser):
     def __init__(self, timestamp='iso8601-local'):
         super().__init__()
         self.time_format = timestamp
-        self.entries = []
 
     def parse(self, tokens, middle_start=False):
         self.tokens = tokens
