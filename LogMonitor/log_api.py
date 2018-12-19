@@ -1,35 +1,24 @@
-from flask_restful import Resource, Api
 from .tokens import Scanner
 from .mongo_parser import MongoParser
 from .node_parser import NodeParser
-import json
 
-class NodeLogApi(Resource):
-    """docstring for logger"""
-    def __init__(self):
-        super().__init__()
+class LogApi:
+
+    def __init__(self, parser_type):
         self.scanner = Scanner()
-        self.node = NodeParser()
-        self.file_path = '/home/joe/Documents/SavantX/server/logs/app.log'
+        self.parser_type = parser_type.lower()
+        if self.parser_type == 'node':
+            self.log_parser = NodeParser()
+        else:
+            self.log_parser = MongoParser()
 
-    def get(self):
-        logs = []
-        with open(self.file_path, 'r') as f:
-            for entry in self.node.parse(self.scanner.tokenize(f.read())):
-                logs.append(entry.toJSON())
-        return logs
+    def parse_logs(self, log_file):
+        with open(log_file, 'r') as f:
+            for entry in self.log_parser.parse(self.scanner.tokenize(f.read())):
+                yield entry.toJSON()
 
-class MongoLogApi(Resource):
-    """docstring for logger"""
-    def __init__(self):
-        super().__init__()
-        self.scanner = Scanner()
-        self.mongo = MongoParser()
-        self.file_path = '/var/log/mongodb/mongod.log'
-
-    def get(self):
-        logs = []
-        with open(self.file_path, 'r') as f:
-            for entry in self.mongo.parse(self.scanner.tokenize(f.read())):
-                logs.append(entry.toJSON())
-        return logs
+    def find_logs(self, log_file, search_filter):
+        with open(log_file, 'r') as f:
+            for entry in self.log_parser.parse(self.scanner.tokenize(f.read())):
+                if entry.does_match(search_filter):
+                    yield entry.toJSON()

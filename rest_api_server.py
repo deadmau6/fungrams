@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_restful import Resource, Api
-from LogMonitor import MongoLogApi, NodeLogApi
+from log_resources import MongoEP, NodeEP
 import json
 
 app = Flask(__name__)
@@ -13,9 +13,9 @@ class User(Resource):
 
 api.add_resource(User, '/')
 
-api.add_resource(MongoLogApi, '/mongologs')
+api.add_resource(MongoEP, '/mongologs')
 
-api.add_resource(NodeLogApi, '/nodelogs')
+api.add_resource(NodeEP, '/nodelogs')
 
 if __name__ =='__main__':
     app.run(debug=True)
