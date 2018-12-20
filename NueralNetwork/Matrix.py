@@ -14,6 +14,9 @@ def matrix_multi(m1, m2, ndigits=None):
 
     if len(m1[0]) != len(m2):
         return "Error: incorrect input format"
+
+    if len(m1) != len(m2):
+        return dot_product(m1, m2, ndigits=ndigits)
     
     m_new = []
 
@@ -22,6 +25,26 @@ def matrix_multi(m1, m2, ndigits=None):
             m_new.append([round(x, ndigits) for x in matrix_vector_multi(m1, m2[i])])
         else:
             m_new.append(matrix_vector_multi(m1, m2[i]))
+
+    return m_new
+
+def dot_product(m1, m2, ndigits=None):
+    if len(m1) != len(m2[0]):
+        return "Error: incorrect input format"
+
+    if len(m1[0]) != len(m2):
+        return "Error: incorrect input format"
+
+    m_new = []
+    m_t = transpose(m1)
+    for i in range(len(m2)):
+        row_2 = m2[i]
+        m_new.append([])
+        for row_1 in m_t:
+            if ndigits:
+                m_new[i].append(sum([round(a * b, ndigits) for a,b in zip(row_1, row_2)]))
+            else:
+                m_new[i].append(sum([a * b for a,b in zip(row_1, row_2)]))
 
     return m_new
 
