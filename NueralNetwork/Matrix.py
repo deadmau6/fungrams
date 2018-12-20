@@ -17,11 +17,11 @@ def matrix_multi(m1, m2, ndigits=None):
     
     m_new = []
 
-    for i in range(0, len(m1)):
+    for i in range(len(m2)):
         if ndigits:
-            m_new.append([round(x, ndigits) for x in matrix_vector_multi(m2, m1[i])])
+            m_new.append([round(x, ndigits) for x in matrix_vector_multi(m1, m2[i])])
         else:
-            m_new.append(matrix_vector_multi(m2, m1[i]))
+            m_new.append(matrix_vector_multi(m1, m2[i]))
 
     return m_new
 
@@ -74,16 +74,16 @@ def get_inverse(A, ndigits=None):
         return "Error: There is no inverse b.c. det(A) = 0"
 
     if len(A) == 2:
-        return _inverse_2d(A)
+        return _inverse_2d(A, ndigits=ndigits)
     else:
         adj_A = transpose(get_cofactor(A))
         return [ scale_vector(1/det, col, ndigits=ndigits) for col in adj_A]
 
-def _inverse_2d(m):
+def _inverse_2d(m, ndigits=None):
     d = _determinant_2d(m)
     return [
-        scale_vector(1/d, [m[1][1], -1*m[0][1]], ndigits=3),
-        scale_vector(1/d, [-1*m[1][0], m[0][0]], ndigits=3),
+        scale_vector(1/d, [m[1][1], -1*m[0][1]], ndigits=ndigits),
+        scale_vector(1/d, [-1*m[1][0], m[0][0]], ndigits=ndigits),
     ]
 
 def get_minor(col, row, m):
@@ -111,3 +111,5 @@ def get_cofactor(m):
                 cof_m[i].append(-1*determinant(get_minor(i, j, m)))
     return cof_m
 
+def row_operation(row, op):
+    return [op(e) for e in row]
