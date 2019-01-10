@@ -1,9 +1,11 @@
 from flask import Flask
 from flask_restful import Resource, Api
 from log_resources import MongoEP, NodeEP
+from flask_cors import CORS
 import json
 
 app = Flask(__name__)
+cors = CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 api = Api(app)
 
 class User(Resource):
