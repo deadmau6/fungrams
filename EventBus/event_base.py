@@ -1,7 +1,6 @@
-from multiprocessing import Process
-import select, random, time
+import select
 
-class EventBase(Process):
+class EventBase:
     """The EventBase class
 
     This class is a parent class as for the event types.
@@ -9,30 +8,20 @@ class EventBase(Process):
     This class holds the basic communication with the manager.
     """
 
-    def __init__(self, event_pipe):
-        Process.__init__(self)
-        # Pipe/Connection for writing updates TO the manager.
-        self.event_pipe = event_pipe
-        
+    def __init__(self, event_conn):
+        # Connection to the manager.
+        self.event_conn = event_conn
 
     def report(self, status_report):
         """Send an update to the manager."""
-        self.event_pipe.send(status_report)
+        self.event_conn.send(status_report)
 
-    def finish(self, conclusion='END'):
+    def finish(self, conclusion):
         """Conclusion message to the manager."""
-        self.event_pipe.send(conclusion)
-        self.event_pipe.close()
+        self.event_conn.send(conclusion)
+        self.event_conn.close()
 
-    def run(self):
-        res_code = random.randrange(100, 999)
-        elapse_time = 1
-        for i in range(3):
-            if self.event_pipe.poll(1):
-                self.report("Canceling....")
-                break
-            color = random.choice(['blue', 'red', 'yellow', 'green', 'violet'])
-            time.sleep(elapse_time)
-            self.report({'id': res_code, 'etime': elapse_time, 'color': color, 'round': i})
-        self.finish()
+    def is_cancelled(self, timeout=1):
+        """This checks the pipe to see if the manager has sent a message to the event."""
+        return self.event_conn.poll(timeout)
 
