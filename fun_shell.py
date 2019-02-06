@@ -23,6 +23,14 @@ def dp_flags(sub):
         metavar=('N'),
         default=False
         )
+    dp_tools.add_argument(
+        '-l',
+        '--lcs',
+        help=Dynamic.LCS.__doc__,
+        nargs=2,
+        metavar=('X', 'Y'),
+        default=False
+        )
     dp_parser.set_defaults(func=dp.start)
 
 def create_flags():
