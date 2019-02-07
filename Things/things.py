@@ -42,5 +42,5 @@ class Things:
                 break
 
 
-    def start(self):
+    def start(self, args):
         Things.pennys_game()
