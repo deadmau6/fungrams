@@ -1,0 +1,10 @@
+# From this folder
+# 1) sudo cp aliases.backup ~/.bash_aliases
+# 2) sudo vim ~/.bash_aliases
+# 3) change FGRMS to the path location of fungrams
+# 4) source ~/.bash_aliases
+#
+export FGRMS='/path/to/fungrams'
+export FGRMSHELL=$FGRMS/fun_shell.py
+
+alias fungrams="python3 $FGRMSHELL"
