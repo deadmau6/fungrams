@@ -1,4 +1,5 @@
 from DP import Dynamic
+from Things import Things
 import argparse
 
 def dp_flags(sub):
@@ -33,11 +34,27 @@ def dp_flags(sub):
         )
     dp_parser.set_defaults(func=dp.start)
 
+def things_flags(sub):
+    things = Things()
+    things_parser = sub.add_parser("things", help=Things.__doc__)
+    # Confilcting arguments are mutually exclusive
+    things_tools = things_parser.add_mutually_exclusive_group()
+
+    things_tools.add_argument(
+        '-p',
+        '--pennys-game',
+        help=Things.pennys_game.__doc__,
+        action='store_true',
+        default=False
+        )
+    things_parser.set_defaults(func=things.start)
+
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
     # Create subparsers for applications.
     sub = p.add_subparsers(help="choose an application to run")
     dp_flags(sub)
+    things_flags(sub)
     return p
 
 if __name__ == '__main__':
