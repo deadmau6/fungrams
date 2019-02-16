@@ -1,5 +1,6 @@
 from DP import Dynamic
 from Things import Things
+from Funpiler import Funpiler
 import argparse
 
 def dp_flags(sub):
@@ -49,12 +50,38 @@ def things_flags(sub):
         )
     things_parser.set_defaults(func=things.start)
 
+def funpiler_flags(sub):
+    funpiler = Funpiler()
+    funpiler_parser = sub.add_parser("funpiler", help=Funpiler.__doc__)
+    # Confilcting arguments are mutually exclusive
+    funpiler_tools = funpiler_parser.add_mutually_exclusive_group()
+
+    funpiler_tools.add_argument(
+        '-t',
+        '--tokenize',
+        help=Funpiler.scan.__doc__,
+        type=str,
+        metavar=('CODE/FILE'),
+        default=False
+        )
+    funpiler_tools.add_argument(
+        '-l',
+        '--logic',
+        help=Funpiler.logic.__doc__,
+        type=str,
+        metavar=('CODE/FILE'),
+        default=False
+        )
+    funpiler_parser.set_defaults(func=funpiler.start)
+
+
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
     # Create subparsers for applications.
     sub = p.add_subparsers(help="choose an application to run")
     dp_flags(sub)
     things_flags(sub)
+    funpiler_flags(sub)
     return p
 
 if __name__ == '__main__':
