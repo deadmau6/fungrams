@@ -32,4 +32,4 @@ class SemanticActions:
             return SemanticActions._find(root_table.parent, name)
 
     def insert_record(self, name, typ):
-        self.root_table.insert_record(name, typ)
+        self.root_table.insert(name, typ)
