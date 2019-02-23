@@ -41,6 +41,15 @@ class Things:
                 print('Exiting...')
                 break
 
+    @staticmethod
+    def read_section(fname, start, end):
+        """This reads a section of bytes from a file and then returns a array of bytes split by 
+        the newline character. 
+        """
+        with open(fname, 'rb') as f:
+            f.seek(start, 0)
+            sect = f.read(end - start)
+        return sect.split(b'\n')
 
     def start(self, args):
         Things.pennys_game()

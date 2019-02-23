@@ -74,6 +74,61 @@ def funpiler_flags(sub):
         )
     funpiler_parser.set_defaults(func=funpiler.start)
 
+def pdfer_flags(sub):
+    pdfer = Funpiler()
+    pdfer_parser = sub.add_parser("pdfer", help=Funpiler.start_pdf.__doc__)
+    
+    pdfer_parser.add_argument(
+        '-f',
+        '--file',
+        type=str,
+        help='PDF File location.',
+        default=False
+        )
+    pdfer_parser.add_argument(
+        '-t',
+        '--tokens',
+        action='store_true',
+        help='Display the tokenized version of the object.',
+        default=False
+        )
+    pdfer_parser.add_argument(
+        '-r',
+        '--raw',
+        action='store_true',
+        help='Display the raw version of the object.',
+        default=False
+        )
+    pdfer_parser.add_argument(
+        '-p',
+        '--parsed',
+        action='store_true',
+        help='Display the parsed version of the object.',
+        default=False
+        )
+    pdfer_parser.add_argument(
+        '-o',
+        '--object-number',
+        type=int,
+        help='Get an object from the pdf using the cross-reference table.',
+        default=False
+        )
+    pdfer_parser.add_argument(
+        '-a',
+        '--all',
+        action='store_true',
+        help='Display the both the raw and tokenized version of the object.',
+        default=False
+        )
+    pdfer_parser.add_argument(
+        '-s',
+        '--sect',
+        type=int,
+        nargs=2,
+        help='Get a section of the pdf file given the start and end in bytes.',
+        metavar=('START', 'END')
+        )
+    pdfer_parser.set_defaults(func=pdfer.start)
 
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
@@ -82,6 +137,7 @@ def create_flags():
     dp_flags(sub)
     things_flags(sub)
     funpiler_flags(sub)
+    pdfer_flags(sub)
     return p
 
 if __name__ == '__main__':
