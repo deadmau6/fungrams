@@ -1,15 +1,21 @@
 import re
 import numpy as np
 import cv2 as cv
+from matplotlib import pyplot as plt
 from argparse import ArgumentParser
 from pprint import pprint
+
+def _convert_bw(image):
+    if len(image.shape) == 3:
+        return cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    return image
 
 def bitwise_operations(image, args):
     """Perform bitwise operations('&', '|', '^', '!') with a white('w'), black('b'), or another image
     (preface file with '#' like '&_#file.png').
     """
     opr, bkgrnd = args.split('_') if len(args.split('_')) == 2 else args
-    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    gray = _convert_bw(image)
     img_2 = None
 
     if bkgrnd.lower().startswith('w'):
@@ -21,7 +27,6 @@ def bitwise_operations(image, args):
     else:
         # black image
         img_2 = np.zeros(gray.shape, np.uint8)
-        #file?
     
     if opr == '&':
         print("AND")
@@ -57,13 +62,20 @@ def affine_rotate(image, angle):
     M = cv.getRotationMatrix2D((cols/2, rows/2),angle,1)
     return cv.warpAffine(square_image, M, (cols, rows))
 
+def adaptive_threshold(image, typ, ksize=11, const=2):
+    
+    image = _convert_bw(image)
+    if typ == 1:
+        return cv.adaptiveThreshold(image, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, ksize, const)
+    return cv.adaptiveThreshold(image, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, ksize, const)
+
 def otsu_binarization(image):
     """Automatically calculates a threshold value for a bimodal* image using it's histogram. 
     It tries to find the middle value between peaks in the histogram. 
     NOT ACCURATE FOR NON-BIMODAL* IMAGES!
     *Bimodal image is essentially an image whose histogram has two peaks*
     """
-    gray_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    gray_image = _convert_bw(image)
     ret, thresh = cv.threshold(gray_image, 127, 255, cv.THRESH_BINARY+cv.THRESH_OTSU)
     print(f"Threshold Value used: {ret}")
     return thresh
@@ -178,6 +190,39 @@ def morph(image, typ, kshape, dims, i):
     print("TYPE: ERODE")
     return cv.erode(image, kernal, iterations=i)
 
+def mask(image, x, y, w, h):
+    image = _convert_bw(image)
+
+    mask = np.zeros(image.shape[:2], np.uint8)
+    mask[y:(y+h), x:(x+w)] = 255
+    return mask, cv.bitwise_and(image, image, mask=mask)
+
+def histogram(image, args_mask):
+    gray_image = _convert_bw(image)
+    inv_image = bitwise_operations(image, '!_w')
+    
+    g_hist = cv.calcHist([gray_image], [0], None, [256], [0,256])
+    i_hist = cv.calcHist([inv_image], [0], None, [256], [0,256])
+    
+    plt.plot(g_hist)
+    plt.plot(i_hist)
+
+    if args_mask:
+        m, m_image = mask(image, *args_mask)
+        m_hist = cv.calcHist([m_image], [0], m, [256], [0,256])
+        plt.plot(m_hist)
+
+    plt.xlim([0,256])
+
+    plt.show()
+
+def contours(image):
+    thresh = otsu_binarization(image)
+    im, ct, h = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    #x, y, w, h = cv.boundingRect(ct[10])
+    #return cv.rectangle(image, (x, y), (x+w, y+h), (0,255,0), 2)
+    return cv.drawContours(image, ct[5:15], -1, (0,255,0), 3)
+
 def docu_display(document):
     clean = re.sub(r'\s+', ' ', document)
     sentences = clean.split('.')
@@ -224,6 +269,11 @@ def run(args):
 
     img = cv.imread(fname, cv.IMREAD_UNCHANGED)
 
+    if args.histogram:
+        histogram(img, args.mask)
+        return
+
+    print(f"ORIGINAL SHAPE: {img.shape}")
     res = None
     if args.otsu:
         res = otsu_binarization(img)
@@ -241,6 +291,12 @@ def run(args):
         res = affine_rotate(img, args.rotate)
     elif args.bitwise:
         res = bitwise_operations(img, args.bitwise)
+    elif args.mask:
+        m, res = mask(img, *args.mask)
+    elif args.adaptive_thresh:
+        res = adaptive_threshold(img, *args.adaptive_thresh)
+    elif args.contours:
+        res = contours(img)
     else:
         res = img
 
@@ -358,6 +414,42 @@ if __name__ == '__main__':
         help="Image format, defualt is 'jpeg'.",
         choices=('jpeg', 'png', 'tiff'),
         default='jpeg'
+        )
+
+    parser.add_argument(
+        '-H',
+        '--histogram',
+        action='store_true',
+        help="Find histogram of image.",
+        default=False
+        )
+
+    parser.add_argument(
+        '-a',
+        '--mask',
+        type=int,
+        nargs=4,
+        help="Get mask of image.",
+        metavar=('X', 'Y', 'W', 'H'),
+        default=False
+        )
+
+    parser.add_argument(
+        '-T',
+        '--adaptive-thresh',
+        type=int,
+        nargs=3,
+        help="Apply Adaptive threshold on the image.",
+        metavar=('TYPE', 'KSIZE', 'CONST'),
+        default=False
+        )
+
+    parser.add_argument(
+        '-c',
+        '--contours',
+        action='store_true',
+        help="Find contours of image.",
+        default=False
         )
 
     args = parser.parse_args()
