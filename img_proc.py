@@ -10,6 +10,23 @@ def _convert_bw(image):
         return cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     return image
 
+def _convert_color(image):
+    if len(image.shape) == 3:
+        return image
+    return cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+
+def _draw_rectangle(image, x, y, w, h):
+    c_image = _convert_color(image)
+
+def _make_square(image, color=0):
+    """Pad the image so that given any rotation, the entire image is visible.
+    """
+    rows, cols, channel = image.shape
+    diameter = np.sqrt((rows ** 2) + (cols ** 2))
+    top = bottom = int((diameter - rows)  / 2) + 1
+    left = right = int((diameter - cols)  / 2) + 1
+    return cv.copyMakeBorder(image, top, bottom, left, right, cv.BORDER_CONSTANT, value=color)
+
 def bitwise_operations(image, args):
     """Perform bitwise operations('&', '|', '^', '!') with a white('w'), black('b'), or another image
     (preface file with '#' like '&_#file.png').
@@ -44,15 +61,6 @@ def bitwise_operations(image, args):
 
     inv = cv.bitwise_not(gray)
     return cv.bitwise_xor(gray, white_board)
-
-def _make_square(image, color=0):
-    """Pad the image so that given any rotation, the entire image is visible.
-    """
-    rows, cols, channel = image.shape
-    diameter = np.sqrt((rows ** 2) + (cols ** 2))
-    top = bottom = int((diameter - rows)  / 2) + 1
-    left = right = int((diameter - cols)  / 2) + 1
-    return cv.copyMakeBorder(image, top, bottom, left, right, cv.BORDER_CONSTANT, value=color)
 
 def affine_rotate(image, angle):
     """Rotate an image around the center given an angle in degrees. 
@@ -198,14 +206,11 @@ def mask(image, x, y, w, h):
     return mask, cv.bitwise_and(image, image, mask=mask)
 
 def histogram(image, args_mask):
-    gray_image = _convert_bw(image)
-    inv_image = bitwise_operations(image, '!_w')
+    gray_image = _convert_bw(image) 
     
     g_hist = cv.calcHist([gray_image], [0], None, [256], [0,256])
-    i_hist = cv.calcHist([inv_image], [0], None, [256], [0,256])
     
     plt.plot(g_hist)
-    plt.plot(i_hist)
 
     if args_mask:
         m, m_image = mask(image, *args_mask)
@@ -219,9 +224,15 @@ def histogram(image, args_mask):
 def contours(image):
     thresh = otsu_binarization(image)
     im, ct, h = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    #x, y, w, h = cv.boundingRect(ct[10])
-    #return cv.rectangle(image, (x, y), (x+w, y+h), (0,255,0), 2)
-    return cv.drawContours(image, ct[5:15], -1, (0,255,0), 3)
+    cnts = []
+    for i in range(800):
+        nxt, prev, child, parent = h[0,i]
+        if child != -1:
+            cnts.append(ct[i])
+    pprint(h[0,0:20])
+
+    color_img = _convert_color(image)
+    return cv.drawContours(color_img, cnts, -1, (0,255,0), 2)
 
 def docu_display(document):
     clean = re.sub(r'\s+', ' ', document)
