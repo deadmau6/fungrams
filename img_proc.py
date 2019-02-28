@@ -1,6 +1,7 @@
 import re
 import numpy as np
 import cv2 as cv
+from os.path import abspath
 from matplotlib import pyplot as plt
 from argparse import ArgumentParser
 from pprint import pprint
@@ -17,6 +18,7 @@ def _convert_color(image):
 
 def _draw_rectangle(image, x, y, w, h):
     c_image = _convert_color(image)
+    return cv.rectangle(c_image, (x, y), (x+w, y+h), (0,255,0), 3)
 
 def _make_square(image, color=0):
     """Pad the image so that given any rotation, the entire image is visible.
@@ -62,10 +64,12 @@ def bitwise_operations(image, args):
     inv = cv.bitwise_not(gray)
     return cv.bitwise_xor(gray, white_board)
 
-def affine_rotate(image, angle):
+def affine_rotate(image, angle, square=True):
     """Rotate an image around the center given an angle in degrees. 
     """
-    square_image = _make_square(image)
+    square_image = image
+    if square:
+        square_image = _make_square(image)
     rows, cols, ch = square_image.shape
     M = cv.getRotationMatrix2D((cols/2, rows/2),angle,1)
     return cv.warpAffine(square_image, M, (cols, rows))
@@ -223,16 +227,31 @@ def histogram(image, args_mask):
 
 def contours(image):
     thresh = otsu_binarization(image)
-    im, ct, h = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    cnts = []
-    for i in range(800):
-        nxt, prev, child, parent = h[0,i]
-        if child != -1:
-            cnts.append(ct[i])
-    pprint(h[0,0:20])
-
+    im, cnts, h = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
     color_img = _convert_color(image)
     return cv.drawContours(color_img, cnts, -1, (0,255,0), 2)
+
+def convolve(image):
+    img = _convert_color(image)
+    convolve = np.zeros(( int(img.shape[0] / 2), int(img.shape[1] / 2), img.shape[2] ), np.uint8)
+    i = 0
+    for x in img[::2]:
+        j = 0
+        for y in x[::2]:
+            convolve[i,j] = y
+            j += 1
+        i += 1
+    return convolve
+
+def deskew(image):
+    img = otsu_binarization(image)
+    coords = np.column_stack(np.where(img > 0))
+    pprint(coords)
+    Ar = cv.minAreaRect(coords)
+    pprint(Ar)
+    angle = -(90 + Ar[-1])
+    print(angle)
+    return affine_rotate(image, angle, square=False)
 
 def docu_display(document):
     clean = re.sub(r'\s+', ' ', document)
@@ -308,14 +327,19 @@ def run(args):
         res = adaptive_threshold(img, *args.adaptive_thresh)
     elif args.contours:
         res = contours(img)
+    elif args.deskew:
+        res = deskew(img)
+    elif args.rect:
+        res = _draw_rectangle(img, *args.rect)
     else:
-        res = img
+        res = convolve(img)
 
     cv.imshow('image', res)
     cv.waitKey(0)
     cv.destroyAllWindows()
     if args.save:
-        fname = f"{args.save}.{args.format}"
+        # Same as os.path.join(os.getcwd(), *path). 
+        fname = abspath(f"{args.save}.{args.format}")
         cv.imwrite(fname, res)
 
 if __name__ == '__main__':
@@ -460,6 +484,24 @@ if __name__ == '__main__':
         '--contours',
         action='store_true',
         help="Find contours of image.",
+        default=False
+        )
+
+    parser.add_argument(
+        '-D',
+        '--deskew',
+        action='store_true',
+        help="Deskew the image.",
+        default=False
+        )
+
+    parser.add_argument(
+        '-R',
+        '--rect',
+        type=int,
+        nargs=4,
+        help="Draw a rectangle.",
+        metavar=('X', 'Y', 'W', 'H'),
         default=False
         )
 

@@ -95,8 +95,9 @@ def pdfer_flags(sub):
     pdfer_parser.add_argument(
         '-r',
         '--raw',
-        action='store_true',
+        type=int,
         help='Display the raw version of the object.',
+        metavar=('VERBOSE_LEVEL'),
         default=False
         )
     pdfer_parser.add_argument(
@@ -128,7 +129,7 @@ def pdfer_flags(sub):
         help='Get a section of the pdf file given the start and end in bytes.',
         metavar=('START', 'END')
         )
-    pdfer_parser.set_defaults(func=pdfer.start)
+    pdfer_parser.set_defaults(func=pdfer.start_pdf)
 
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
