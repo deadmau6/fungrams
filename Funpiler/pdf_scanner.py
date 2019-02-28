@@ -42,7 +42,7 @@ class PdfScanner:
         ]
         self.regex = '|'.join(f"(?P<{name}>{regex})" for name, regex in self.patterns)
 
-    def tokenize(self, data):
+    def tokenize(self, data, white_space=False):
         line_num = 1
         line_start = 0
         for mo in re.finditer(self.regex, data):
@@ -56,6 +56,6 @@ class PdfScanner:
                 name = value
             elif name == 'NUMBER':
                 value = float(value) if '.' in value else int(value)
-            elif name == 'WHTSPC':
-                continue
+            #elif name == 'WHTSPC' and  not white_space:
+            #    continue
             yield Token(name, value, line_num, column)

@@ -67,7 +67,13 @@ class Funpiler:
 
             if args.raw or args.all:
                 print("RAW OBJECT:\n")
-                print(pdf.get_raw_object(args.object_number, more=True))
+                r = pdf.get_raw_object(args.object_number, more=True)
+                if args.raw >= 2:
+                    print(str(r, 'utf-8'))
+                elif args.raw == 1:
+                    pprint(r.split(b'\n'))
+                else:
+                    print(r)
                 print()
             
             if args.parsed or args.all:

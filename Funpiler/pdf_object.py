@@ -19,16 +19,15 @@ class PDFObject:
         else:
             return self.sorted_addresses[s_index + 1]
 
-
     def get_root_num(self):
-        return self.trailer['root']['obj_number']
+        return self.trailer['root'][0]
 
     def raw_catalog(self, more=False):
-        root_num = self.trailer['root']['obj_number']
+        root_num = self.trailer['root'][0]
         return self.get_raw_object(root_num, more)
 
     def create_catalog(self):
-        root_num = self.trailer['root']['obj_number']
+        root_num = self.trailer['root'][0]
         return self.get_indirect_object(root_num)
 
     def get_indirect_object(self, obj_number):

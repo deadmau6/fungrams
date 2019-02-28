@@ -21,7 +21,21 @@ class PDFParser(RecursiveParser):
             'values': vals
         }
 
+    def _skip_space(self):
+        if self.current == None:
+            return False
+        if self.current.kind == 'NEWLINE':
+            self.match('NEWLINE')
+            return True
+        if self.current.kind == 'WHTSPC':
+            self.match('WHTSPC')
+            return True
+        return False
+
     def _any_object(self):
+        # Get rid of any floating line breaks.
+        self._skip_space()
+
         if self.current.kind == 'OPR':
             return self._name_object()
 
@@ -54,7 +68,15 @@ class PDFParser(RecursiveParser):
     def _name_object(self):
         sign = self.match('OPR')
         if sign == '/':
-            return self.match(None)
+            name = []
+            while not self._skip_space():
+                val = self.match(None)
+                if not isinstance(val, str):
+                    val = str(val)
+                name.append(val)
+            
+            return ''.join(name)
+
         return self._numeric_object(sign=sign)
 
     def _numeric_object(self, sign=None):
@@ -67,16 +89,19 @@ class PDFParser(RecursiveParser):
 
     def _indirect_object(self):
         obj_number = self.match('NUMBER')
+        self._skip_space()
 
         if self.current.kind != 'NUMBER':
             # normal number
             return obj_number
 
         gen_number = self.match('NUMBER')
+        self._skip_space()
 
         if self.current.kind == 'ID' and self.current.value == 'R':
             # Indirect Reference
             ref = self.match('ID', 'R')
+            self._skip_space()
             return obj_number, gen_number, ref
 
         if self.current.kind != 'obj':
@@ -87,8 +112,7 @@ class PDFParser(RecursiveParser):
         obj_vals = []
         while self.current.kind != 'endobj':
             
-            if self.current.kind == 'NEWLINE':
-                self.match('NEWLINE')
+            if self._skip_space():
                 continue
 
             obj_vals.append(self._any_object())
@@ -96,6 +120,7 @@ class PDFParser(RecursiveParser):
             if self.current is None:
                 break
         self.match('endobj')
+
         return obj_number, gen_number, obj_vals
 
     def _literal_string_object(self):
@@ -122,8 +147,7 @@ class PDFParser(RecursiveParser):
         self.match('SQUARE', '[')
         arr = []
         while self.current.kind != 'SQUARE':
-            if self.current.kind == 'NEWLINE':
-                self.match('NEWLINE')
+            if self._skip_space():
                 continue
 
             arr.append(self._any_object())
@@ -174,8 +198,7 @@ class PDFParser(RecursiveParser):
         arrow_count = 2
         d_obj = {}
         while arrow_count != 0:
-            if self.current.kind == 'NEWLINE':
-                self.match('NEWLINE')
+            if self._skip_space():
                 continue
 
             if self.current.kind == 'ARROW':
@@ -193,64 +216,8 @@ class PDFParser(RecursiveParser):
         self.match('trailer')
         self.match('NEWLINE')
         self.match('ARROW')
-        self.match('ARROW')
-        trailer = {}
-        while self.current.kind != 'startxref':
-            if self.current.kind == 'OPR':
-                self.match('OPR', '/')
-                k, v = self._trailer_entry()
-                trailer[k] = v
-            else:
-                self.match(None)
-        return trailer
-
-    def _trailer_entry(self):
-        value = None
-        key = self.match('ID').lower()
-
-        if key in ['size', 'prev']:
-            # single integer value
-            value = self.match('NUMBER')
-        elif key in ['root', 'encrypt', 'info']:
-            # indirect reference dict
-            value = {
-                'obj_number': self.match('NUMBER'),
-                'gen_number': self.match('NUMBER') 
-            }
-            self.match('ID', 'R')
-        elif key == 'id':
-            value = self._trailer_id()
-
-        return key, value
-
-    def _trailer_id(self):
-        self.match('SQUARE')
-        arr = []
-        item = []
-
-        while self.current.kind != 'SQUARE':
-            if self.current.kind == 'ARROW':
-                
-                if self.current.value == '>':
-                    self.match('ARROW', '>')
-                    arr.append(''.join(item))
-                    item = []
-                
-                if self.current.value == '<':
-                    self.match('ARROW', '<')
-
-            elif self.current.kind == 'NUMBER':
-
-                item.append(str(self.match('NUMBER')))
-            elif self.current.kind == 'NEWLINE':
-
-                self.match(None)
-            else:
-
-                item.append(self.match(None))
-
-        self.match('SQUARE')
-        return arr
+        trailer = self._dictionary_object()
+        return {k.lower(): v for k, v in trailer.items()}
 
     def xref(self):
         self.match('xref')
@@ -258,6 +225,7 @@ class PDFParser(RecursiveParser):
         table = {}
         while self.current.kind != 'trailer':
             obj_num = self.match('NUMBER')
+            self._skip_space()
             sect_size = self.match('NUMBER')
             self.match('NEWLINE')
 
@@ -271,8 +239,11 @@ class PDFParser(RecursiveParser):
         obj_number = obj_num
         while obj_number < sect_size:
             byte_offset = self.match('NUMBER')
+            self._skip_space()
             gen_number = self.match('NUMBER')
+            self._skip_space()
             use_flag = self.match('ID') == 'n'
+            self._skip_space()
             self.match('NEWLINE')
             yield obj_number, byte_offset, gen_number, use_flag
             obj_number += 1
