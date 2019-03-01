@@ -70,9 +70,18 @@ class PDFParser(RecursiveParser):
         if sign == '/':
             name = []
             while not self._skip_space():
+
+                if self.current.kind == 'OPR' and self.current.value == '/':
+                    break
+                
+                if self.current.kind in ['PERCENT','ARROW','PAREN','CURLY','SQUARE']:
+                    break
+
                 val = self.match(None)
+
                 if not isinstance(val, str):
                     val = str(val)
+                
                 name.append(val)
             
             return ''.join(name)
