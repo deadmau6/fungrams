@@ -115,6 +115,20 @@ def pdfer_flags(sub):
         default=False
         )
     pdfer_parser.add_argument(
+        '-n',
+        '--fonts',
+        type=int,
+        help='Get as many fonts from the starting object number.',
+        default=False
+        )
+    pdfer_parser.add_argument(
+        '-u',
+        '--unicodes',
+        type=int,
+        help='Get unicode object for each font from the starting object number.',
+        default=False
+        )
+    pdfer_parser.add_argument(
         '-a',
         '--all',
         action='store_true',

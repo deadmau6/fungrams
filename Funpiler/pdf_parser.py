@@ -21,6 +21,52 @@ class PDFParser(RecursiveParser):
             'values': vals
         }
 
+    def parse_to_unicode(self, tokens):
+        self.tokens = tokens
+        self.advance()
+        cid_init = self._name_object()
+        proc_set_k = self._name_object()
+        proc_set_arr = []
+        while self.current.kind != 'NEWLINE':
+            if self._skip_space():
+                continue
+            if self.current.kind == 'ID':
+                val = self.match('ID')
+                if val == 'begin':
+                    break
+                else:
+                    proc_set_arr.append(val)
+        self._skip_space()
+
+        pre_crap = []
+        while self.current.kind != 'begincmap':
+            pre_crap.append(self.match(None))
+            self._skip_space()
+
+        info, cmap = self._cmap()
+        
+        self._skip_space()
+        post_crap = []
+        while self.current != None:
+            post_crap.append(self.match(None))
+            self._skip_space()
+
+        return {
+            'proc_set': proc_set_arr,
+            'info': info,
+            'cmap': cmap,
+            'pre': pre_crap,
+            'post': post_crap
+        }
+
+    def parse_content(self, tokens):
+        self.tokens = tokens
+        self.advance()
+        while self.current.kind != 'BT':
+            #Fuck off
+            self.match(None)
+
+
     def _skip_space(self):
         if self.current == None:
             return False
@@ -220,6 +266,128 @@ class PDFParser(RecursiveParser):
             d_obj[key] = value
 
         return d_obj
+
+    def _content_text(self):
+        text = {}
+        while self.current.kind != 'BT':
+            pass
+
+        pass
+
+    def _find_text(self):
+        self.match('BT')
+        font = None
+        b_text = []
+        while self.current.kind != 'ET':
+            if self.current.kind == 'PAREN':
+                b_text.append(self._literal_string_object())
+            elif self.current.kind == 'ARROW':
+                b_text.append(self._hex_string_object())
+            elif self.current.kind == 'OPR' and self.current.value == '/':
+                font = self._name_object()
+            else:
+                self.match(None)
+        self.match('ET')
+        self._skip_space()
+        return font, b_text
+
+    def _cmap(self):
+        self.match('begincmap')
+        meta_info = {}
+        cmap = {}
+        
+        while self.current.kind != 'endcmap':
+            
+            if self._skip_space():
+                continue
+
+            if self.current.kind == 'NUMBER':
+                key, value = self._cmap_entries()
+                try:
+                    cmap[key].extend(value)
+                except KeyError:
+                    cmap[key] = value
+            else:
+                key, value = self._cmap_meta_info()
+                meta_info[key] = value
+        
+        self.match('endcmap')
+        return meta_info, cmap
+
+    def _cmap_meta_info(self):
+        key = None
+        values = []
+        if self.current.kind == 'OPR':
+            key = self._name_object()
+            self._skip_space()
+            value = self._any_object()
+            self._skip_space()
+        if self.current.kind == 'ID' and self.current.value == 'def':
+            self.match(None)
+        self._skip_space()
+        return key, value
+
+    def _cmap_entries(self):
+        n = self.match('NUMBER')
+        self._skip_space()
+        if self.current.kind == 'begincodespacerange':
+            return 'code_space_range', self._cmap_codespace()
+
+        if self.current.kind == 'beginbfchar':
+            return 'bf_char', self._cmap_bfchar()
+
+        if self.current.kind == 'beginbfrange':
+            return 'bf_range', self._cmap_bfrange()
+
+    def _cmap_codespace(self):
+        self.match('begincodespacerange')
+        code_space = []
+
+        while self.current.kind != 'endcodespacerange':
+            self._skip_space()
+            start_range = self._hex_string_object()
+            self._skip_space()
+            end_range = self._hex_string_object()
+            self._skip_space()
+            code_space.append((start_range, end_range))
+        
+        self.match('endcodespacerange')
+        return code_space
+
+    def _cmap_bfchar(self):
+        self.match('beginbfchar')
+        bfchars = []
+
+        while self.current.kind != 'endbfchar':
+            self._skip_space()
+            src_code = self._hex_string_object()
+            self._skip_space()
+            dst_string = self._hex_string_object()
+            self._skip_space()
+            bfchars.append((src_code, dst_string))
+        
+        self.match('endbfchar')
+        return bfchars
+
+    def _cmap_bfrange(self):
+        self.match('beginbfrange')
+        bfrange = []
+
+        while self.current.kind != 'endbfrange':
+            self._skip_space()
+            start_code = self._hex_string_object()
+            self._skip_space()
+            end_code = self._hex_string_object()
+            self._skip_space()
+            if self.current.kind == 'ARROW':
+                dst_list = [self._hex_string_object()]
+                bfrange.append((start_code, end_code, dst_list))
+            else:
+                bfrange.append((start_code, end_code, self._array_object()))
+            self._skip_space()
+
+        self.match('endbfrange')
+        return bfrange
 
     def trailer(self):
         self.match('trailer')
