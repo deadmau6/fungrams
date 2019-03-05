@@ -91,6 +91,18 @@ class Funpiler:
             print("UNICODE OBJECTS:\n")
             pprint(pdf.get_unicodes(args.unicodes))
 
+        elif args.page_text:
+            page, info, text = pdf.get_page_text(args.page_text)
+            print("PAGE:\n")
+            pprint(page)
+            print()
+            print("CONTENT INFO:\n")
+            pprint(info)
+            print()
+            print("TEXT:\n")
+            pprint(text)
+            print()
+
         elif args.sect:
             print("SECTION:\n")
             pprint(Funpiler.read_section(args.file, *args.sect))

@@ -109,10 +109,40 @@ class PDFObject:
         for k,v in self.fonts.items():
             if 'ToUnicode' in v:
                 info, u_stream = self.get_indirect_object(v['ToUnicode'][0], search_stream=True)
-                res = self.parser.parse_to_unicode(self.scanner.tokenize(u_stream))
+                res = self.parser.parse_to_unicode(self.scanner.tokenize(u_stream, convert_nums=False))
                 self._update_translation_table(k, res['cmap'])
 
         return self.translation_table
+
+    def get_page_text(self, obj_number):
+        """
+        Acrobat Versions 4.0 and 5.0 (PDF Versions 1.3 and 1.4, respectively)
+        must use “ToUnicode” mapping files that are restricted to UCS-2 (Big Endian) encoding,
+        which is equivalent to UTF-16BE encoding without Surrogates.
+        """
+        obj = self.get_indirect_object(obj_number)
+        page = None
+        for item in obj['values']:
+            obj_typ = item.get('Type')
+            if obj_typ == 'Page':
+                page = item
+                break
+
+        if page is None:
+            return "Error: please provide a page's object number."
+
+        self.get_unicodes(page['Resources'][0])
+
+        i, stream = self.get_indirect_object(page['Contents'][0], search_stream=True, decode_stream=False)
+
+        res = self.parser.parse_content(self.scanner.b_tokenize(stream))
+
+        text_arr = []
+        for entry in res:
+            font, b_arr = entry
+            text_arr.append(self._decode_content(font, b_arr))
+        
+        return page, i, text_arr
 
     def _update_translation_table(self, font_key, cmap):
         char_map = {}
@@ -134,13 +164,13 @@ class PDFObject:
             elif len(val) == 1:
                 val_num = int(format(val[0], '0>4'), 16)
 
-                for i in range(start, end):
+                for i in range(start, (end + 1)):
                     key = hex(i)[2:]
                     char_map[key] = chr(val_num)
                     val_num += 1
 
             else:
-                for i in range(start, end):
+                for i in range(start, (end + 1)):
                     key = hex(i)[2:]
                     index = i - start
                     char_map[key] = chr(int(format(val[index], '0>4'), 16))
@@ -174,20 +204,11 @@ class PDFObject:
         must use “ToUnicode” mapping files that are restricted to UCS-2 (Big Endian) encoding,
         which is equivalent to UTF-16BE encoding without Surrogates.
         """
-        self.get_unicodes(55)
         i, stream = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
-        #pprint([t for t in self.scanner.b_tokenize(stream)])
 
-        res = self.parser.parse_content(self.scanner.b_tokenize(stream))
-
-        text_arr = []
-        for entry in res:
-            font, b_arr = entry
-            text_arr.append(self._decode_content(font, b_arr))
-        pprint(text_arr)
-        #text_arr = self._translate(res)
-        #pprint(text_arr)
-        return i
+        #res = self.parser.parse_content(self.scanner.b_tokenize(stream))
+        #pprint(res)
+        return i, stream.split(b'\n')
 
     def _decode_content(self, font, b_arr):
         if font in self.translation_table:
@@ -198,10 +219,17 @@ class PDFObject:
         if f_encoding.startswith('macroman'):
             return ''.join([str(text, 'mac_roman') for text in b_arr])
 
-
     def _remap(self, b_stream, font):
-        hex_string = ''.join([x.hex() for x in b_stream])
-        translator = self.translation_table[font] 
+        hx_arr = []
+        for x in b_stream:
+            try:
+                hx_arr.append(x.hex())
+            except Exception as e:
+                # x must be a string which means it's already a hex string.
+                hx_arr.append(x)
+
+        hex_string = ''.join(hx_arr)
+        translator = self.translation_table[font]
         text = []
         for a, b in zip(hex_string[::2], hex_string[1::2]):
             code = a+b

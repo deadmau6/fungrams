@@ -129,6 +129,13 @@ def pdfer_flags(sub):
         default=False
         )
     pdfer_parser.add_argument(
+        '-T',
+        '--page-text',
+        type=int,
+        help='Get text from a page.',
+        default=False
+        )
+    pdfer_parser.add_argument(
         '-a',
         '--all',
         action='store_true',

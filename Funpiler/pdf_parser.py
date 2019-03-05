@@ -284,7 +284,10 @@ class PDFParser(RecursiveParser):
             elif self.current.value == b'\\':
                 self.match(None)
                 if self.current.kind == 'PAREN':
-                    self.match(None)
+                    val = self.match(None)
+                    if not isinstance(val, bytes):
+                        val = bytes(val, 'utf-8')
+                    literal_bytes.append(val)
 
             else:
                 val = self.match(None)
@@ -302,14 +305,14 @@ class PDFParser(RecursiveParser):
         while self.current.kind != 'ARROW':
             val = self.match(None)
             
-            if not isinstance(val, bytes):
-                val = bytes(val, 'utf-8')
+            if not isinstance(val, str):
+                val = str(val, 'utf-8')
 
             hex_bytes.append(val)
         
         self.match('ARROW', '>')
 
-        return b''.join(hex_bytes)
+        return ''.join(hex_bytes)
 
     def _byte_name_object(self):
         self.match('OPR')
