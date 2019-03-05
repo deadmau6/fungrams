@@ -6,21 +6,32 @@ class PdfScanner:
 
     def __init__(self):
         self.keywords = {
-            'xref',
-            'startxref',
-            'trailer',
+            'BT',
+            'ET',
+            'obj',
             'PDF',
             'EOF',
-            'Length',
-            'obj',
-            'endobj',
-            'stream',
-            'endstream',
-            'Type',
-            'Subtype',
-            'null',
+            'xref',
             'true',
-            'false'
+            'null',
+            'Type',
+            'false',
+            'stream',
+            'endobj',
+            'Filter',
+            'Length',
+            'trailer',
+            'endcmap',
+            'Subtype',
+            'begincmap',
+            'startxref',
+            'endstream',
+            'endbfchar',
+            'beginbfchar',
+            'endbfrange',
+            'beginbfrange',
+            'endcodespacerange',
+            'begincodespacerange'
         }
         self.patterns = [
             ('NUMBER', r'\d+(\.\d*)?'),
@@ -28,7 +39,6 @@ class PdfScanner:
             ('COLON', r':'),
             ('ASSIGN', r'='),
             ('PERCENT', r'%'),
-            ('SLASH', r'/'),
             ('QUOTE', r'[\'"]'),
             ('ARROW', r'[<>]'),
             ('PAREN', r'[()]'),
@@ -56,6 +66,24 @@ class PdfScanner:
                 name = value
             elif name == 'NUMBER':
                 value = float(value) if '.' in value else int(value)
-            elif name == 'WHTSPC':
-                continue
+            #elif name == 'WHTSPC' and  not white_space:
+            #    continue
+            yield Token(name, value, line_num, column)
+
+    def b_tokenize(self, data):
+        line_num = 1
+        line_start = 0
+        regs = re.compile(bytes(self.regex, 'utf-8'), re.S)
+        b_keywords = [bytes(k, 'utf-8') for k in self.keywords]
+        for mo in re.finditer(regs, data):
+            name = mo.lastgroup
+            value = mo.group(name)
+            column = mo.start() - line_start
+            if name == 'NEWLINE':
+                line_start = mo.end()
+                line_num += 1
+            elif name == 'ID' and value in b_keywords:
+                name = str(value, 'utf-8')
+            elif name in ['ARROW','PAREN','SQUARE']:
+                value = str(value, 'utf-8')
             yield Token(name, value, line_num, column)

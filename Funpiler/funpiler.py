@@ -67,7 +67,12 @@ class Funpiler:
 
             if args.raw or args.all:
                 print("RAW OBJECT:\n")
-                print(pdf.get_raw_object(args.object_number, more=True))
+                if args.raw >= 2:
+                    print(pdf.get_raw_object(args.object_number, more=False))
+                elif args.raw == 1:
+                    pprint(pdf._parse_content(args.object_number))
+                else:
+                    print(pdf.get_raw_object(args.object_number, more=True))
                 print()
             
             if args.parsed or args.all:
@@ -78,6 +83,14 @@ class Funpiler:
             if not any([args.tokens, args.raw, args.parsed]) or args.all:
                 print(f"XREF ENTRY OF {args.object_number}:\n")
                 pprint(pdf.xref_table[args.object_number])
+        elif args.fonts:
+            print("FONTS:\n")
+            pprint(pdf.get_fonts(args.fonts))
+
+        elif args.unicodes:
+            print("UNICODE OBJECTS:\n")
+            pprint(pdf.get_unicodes(args.unicodes))
+
         elif args.sect:
             print("SECTION:\n")
             pprint(Funpiler.read_section(args.file, *args.sect))
