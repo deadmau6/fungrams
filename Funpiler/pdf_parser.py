@@ -62,10 +62,7 @@ class PDFParser(RecursiveParser):
     def parse_content(self, tokens):
         self.tokens = tokens
         self.advance()
-        while self.current.kind != 'BT':
-            #Fuck off
-            self.match(None)
-
+        return self._content_stream()
 
     def _skip_space(self):
         if self.current == None:
@@ -190,6 +187,11 @@ class PDFParser(RecursiveParser):
                     paren_count += 1
                 else:
                     paren_count -= 1
+            elif self.current.value == '\\':
+                self.match(None)
+                if self.current.kind == 'PAREN':
+                    self.match(None)
+
             else:
                 val = self.match(None)
                 if not isinstance(val, str):
@@ -267,24 +269,87 @@ class PDFParser(RecursiveParser):
 
         return d_obj
 
-    def _content_text(self):
-        text = {}
-        while self.current.kind != 'BT':
-            pass
+    def _literal_byte_string(self):
+        self.match('PAREN', '(')
+        paren_count = 1
+        literal_bytes = []
+        while paren_count != 0:
+            
+            if self.current.kind == 'PAREN':
+                val = self.match('PAREN')
+                if val == '(':
+                    paren_count += 1
+                else:
+                    paren_count -= 1
+            elif self.current.value == b'\\':
+                self.match(None)
+                if self.current.kind == 'PAREN':
+                    self.match(None)
 
-        pass
+            else:
+                val = self.match(None)
+                if not isinstance(val, bytes):
+                    val = bytes(val, 'utf-8')
+                literal_bytes.append(val)
+
+        return b''.join(literal_bytes)
+
+    def _hex_bytes_object(self):
+        #First ARROW must be removed
+        self.match('ARROW', '<')
+
+        hex_bytes = []
+        while self.current.kind != 'ARROW':
+            val = self.match(None)
+            
+            if not isinstance(val, bytes):
+                val = bytes(val, 'utf-8')
+
+            hex_bytes.append(val)
+        
+        self.match('ARROW', '>')
+
+        return b''.join(hex_bytes)
+
+    def _byte_name_object(self):
+        self.match('OPR')
+        name = []
+        while not self._skip_space():
+            if self.current.kind == 'OPR' and self.current.value == b'/':
+                break
+                
+            if self.current.kind in ['PERCENT','ARROW','PAREN','CURLY','SQUARE']:
+                break
+
+            val = self.match(None)
+
+            if not isinstance(val, str):
+                val = str(val, 'utf-8')
+                
+            name.append(val)
+            
+        return ''.join(name)
+
+    def _content_stream(self):
+        text = []
+        while self.current != None:
+            if self.current.kind == 'BT':
+                text.append(self._find_text())
+            else:
+                self.match(None)
+        return text
 
     def _find_text(self):
         self.match('BT')
-        font = None
+        font = 'other'
         b_text = []
         while self.current.kind != 'ET':
             if self.current.kind == 'PAREN':
-                b_text.append(self._literal_string_object())
+                b_text.append(self._literal_byte_string())
             elif self.current.kind == 'ARROW':
-                b_text.append(self._hex_string_object())
-            elif self.current.kind == 'OPR' and self.current.value == '/':
-                font = self._name_object()
+                b_text.append(self._hex_bytes_object())
+            elif self.current.kind == 'OPR' and self.current.value == b'/':
+                font = self._byte_name_object()
             else:
                 self.match(None)
         self.match('ET')

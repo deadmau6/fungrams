@@ -13,6 +13,7 @@ class PDFObject:
         self.xref_table, self.trailer = self._parse_xref()
         self.sorted_addresses = sorted([v['byte_offset'] for k, v in self.xref_table.items()])
         self.fonts = {}
+        self.translation_table = {}
         self.catalog = {}
 
     def _end(self, start):
@@ -33,7 +34,7 @@ class PDFObject:
         root_num = self.trailer['root'][0]
         return self.get_indirect_object(root_num)
 
-    def get_indirect_object(self, obj_number, search_stream=False):
+    def get_indirect_object(self, obj_number, search_stream=False, decode_stream=True):
         data = self.get_raw_object(obj_number, more=True)
 
         if not search_stream:
@@ -45,7 +46,7 @@ class PDFObject:
         
         if match:
             info = self.parser.parse_indirect_object(self.scanner.tokenize(str(match[0] + match[2], 'utf-8')))
-            stream = self._raw_stream(info['values'], match[1])
+            stream = self._raw_stream(info['values'], match[1], decode_stream)
             return info, stream
 
         return self.parser.parse_indirect_object(self.scanner.tokenize(str(data, 'utf-8')))
@@ -104,12 +105,47 @@ class PDFObject:
         """Preferably start with a Resources Object"""
         if self.get_fonts(obj_number) is None:
             return "Error: No Fonts Found"
-        to_unicodes = {}
+        
         for k,v in self.fonts.items():
             if 'ToUnicode' in v:
                 info, u_stream = self.get_indirect_object(v['ToUnicode'][0], search_stream=True)
-                to_unicodes[k] = self.parser.parse_to_unicode(self.scanner.tokenize(u_stream))
-        return to_unicodes
+                res = self.parser.parse_to_unicode(self.scanner.tokenize(u_stream))
+                self._update_translation_table(k, res['cmap'])
+
+        return self.translation_table
+
+    def _update_translation_table(self, font_key, cmap):
+        char_map = {}
+        bf_chars = cmap.get('bf_char', [])
+        for entry in bf_chars:
+            key, val = entry
+            char_map[key] = chr(int(format(val, '0>4'), 16))
+        
+        bf_range = cmap.get('bf_range', [])
+        for entry in bf_range:
+
+            u_start, u_end, val = entry
+            start = int(format(u_start, '0>4'), 16)
+            end = int(format(u_end, '0>4'), 16)
+
+            if (end - start) == 0:
+                char_map[u_start] = chr(int(format(val[0], '0>4'), 16))
+
+            elif len(val) == 1:
+                val_num = int(format(val[0], '0>4'), 16)
+
+                for i in range(start, end):
+                    key = hex(i)[2:]
+                    char_map[key] = chr(val_num)
+                    val_num += 1
+
+            else:
+                for i in range(start, end):
+                    key = hex(i)[2:]
+                    index = i - start
+                    char_map[key] = chr(int(format(val[index], '0>4'), 16))
+
+        self.translation_table[font_key] = char_map
 
     def _parse_xref(self):
         with open(self.fname, 'rb') as f:
@@ -117,7 +153,7 @@ class PDFObject:
             ref_table = f.read()
         return self.parser.parse(self.scanner.tokenize(str(ref_table, 'utf-8')))
 
-    def _raw_stream(self, stream_info, stream_data):
+    def _raw_stream(self, stream_info, stream_data, decode_stream=True):
         decomp_typ = None
         for item in stream_info:
             if 'Filter' in item:
@@ -125,7 +161,10 @@ class PDFObject:
                 break
 
         if decomp_typ.lower() == 'flatedecode':
-            return zlib.decompress(stream_data).decode('utf-8')
+            if decode_stream:
+                return zlib.decompress(stream_data).decode('utf-8')
+            else:
+                return zlib.decompress(stream_data)
 
         return stream_data
 
@@ -135,11 +174,42 @@ class PDFObject:
         must use “ToUnicode” mapping files that are restricted to UCS-2 (Big Endian) encoding,
         which is equivalent to UTF-16BE encoding without Surrogates.
         """
-        i, stream = self.get_indirect_object(obj_number, search_stream=True)
-        print(len(stream))
-        return i, stream
+        self.get_unicodes(55)
+        i, stream = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
+        #pprint([t for t in self.scanner.b_tokenize(stream)])
+
+        res = self.parser.parse_content(self.scanner.b_tokenize(stream))
+
+        text_arr = []
+        for entry in res:
+            font, b_arr = entry
+            text_arr.append(self._decode_content(font, b_arr))
+        pprint(text_arr)
+        #text_arr = self._translate(res)
+        #pprint(text_arr)
+        return i
+
+    def _decode_content(self, font, b_arr):
+        if font in self.translation_table:
+            return ''.join(self._remap(b_arr, font))
+
+        f_encoding = self.fonts[font]['Encoding'].lower()
+
+        if f_encoding.startswith('macroman'):
+            return ''.join([str(text, 'mac_roman') for text in b_arr])
 
 
-    def _translate_text(self, bf_text, translator):
-        for k in bf_text:
-            yield chr(int(translator[k], 16))
+    def _remap(self, b_stream, font):
+        hex_string = ''.join([x.hex() for x in b_stream])
+        translator = self.translation_table[font] 
+        text = []
+        for a, b in zip(hex_string[::2], hex_string[1::2]):
+            code = a+b
+            if code in translator:
+                text.append(translator[code])
+            else:
+                # user4369081 on stackoverflow
+                text.append(bytearray.fromhex(code).decode())
+
+        return ''.join(text)
+        
