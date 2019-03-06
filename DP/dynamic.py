@@ -1,3 +1,6 @@
+import numpy as np
+import cv2 as cv
+import math, re
 
 class Dynamic:
     
@@ -62,6 +65,31 @@ class Dynamic:
                 j-=1
         return ''.join(lcs[::-1])
 
+    @staticmethod
+    def similarity_seq_image(text_file):
+        with open(text_file, 'r') as f:
+            data = f.read().lower()
+        
+        seq = re.split(r"\W+", data)
+        s = len(seq)
+        ksize = math.ceil(800/s)
+        d = s * ksize
+
+        img = np.full((d+1 , d+1, 3), 255, np.uint8)
+        print(img.shape)
+        for i in range(0, d, ksize):
+            r = 128 + (i % 128)
+            for j in range(0, d, ksize):
+                b = 128 + (j % 128)
+                if seq[(j % s)] == seq[(i % s)]:
+                    g = r + b if r + b > 255 else 255
+                    img[i:i + ksize, j:j + ksize] = [r, g, b]
+                    img[i,j] = 0
+                    
+
+        cv.imshow('image', img)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
 
     def start(self, args):
         if args.sum_subset:
@@ -78,5 +106,7 @@ class Dynamic:
             s2 = list(args.lcs[1])
             subseq = Dynamic.LCS(s1, s2, len(s1), len(s2))
             print(f"Found LCS: {subseq}\nLCS Length: {len(subseq)}")
+        elif args.word_image:
+            Dynamic.similarity_seq_image(args.word_image)
         else:
-            pass
+            print(Dynamic.fibonacci(10))
