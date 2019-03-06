@@ -40,11 +40,12 @@ class PDFObject:
         if not search_stream:
             return self.parser.parse_indirect_object(self.scanner.tokenize(str(data, 'utf-8')))
         
-        stream_regex = re.compile(b'(.*stream\n)(.*?)(endstream.*)', re.S)
+        stream_regex = re.compile(br'(.*stream[\r\n]+)(.*?)(endstream.*)', re.S)
         
-        match = re.match(stream_regex, data).groups()
+        m = re.match(stream_regex, data)
         
-        if match:
+        if m:
+            match = m.groups()
             info = self.parser.parse_indirect_object(self.scanner.tokenize(str(match[0] + match[2], 'utf-8')))
             stream = self._raw_stream(info['values'], match[1], decode_stream)
             return info, stream
@@ -57,10 +58,20 @@ class PDFObject:
 
         with open(self.fname, 'rb') as f:
             f.seek(start)
-            first = f.read(end - start)
+            data = f.read(end - start)
+
         if more:
-            return first
-        return str(first, 'utf-8')
+            return data
+        return str(data, 'utf-8')
+
+    def get_resources(self, resource_obj):
+        if isinstance(resource_obj, tuple):
+            return self.get_indirect_object(resource_obj[0])['values'][0]
+
+        if 'Resources' in resource_obj:
+            return self.get_resources('Resources')
+
+        return resource_obj 
 
     def get_fonts(self, obj_number):
         """Preferably start with a Resources Object"""
@@ -82,14 +93,17 @@ class PDFObject:
                 break
 
             if 'Resources' in item:
-                ret_val = item['Resources'][0]
+                resource = self.get_resources(item['Resources'])
+                fnt = resource.get('Font')
                 break
 
             if 'Font' in item:
                 fnt = item['Font']
-                if isinstance(fnt, tuple):
-                    fnt = self.get_indirect_object(fnt[0])['values'][0]
                 break
+
+        if isinstance(fnt, tuple):
+            fnt = self.get_indirect_object(fnt[0])['values'][0]
+
         if fnt:
             for k, v in fnt.items():
                 if k in self.fonts:
@@ -131,9 +145,12 @@ class PDFObject:
         if page is None:
             return "Error: please provide a page's object number."
 
-        self.get_unicodes(page['Resources'][0])
+        self.get_unicodes(obj['obj_number'])
 
-        i, stream = self.get_indirect_object(page['Contents'][0], search_stream=True, decode_stream=False)
+        content = page['Contents'][0] if isinstance(page['Contents'], tuple) else page['Contents'][0][0]
+
+
+        i, stream = self.get_indirect_object(content, search_stream=True, decode_stream=False)
 
         res = self.parser.parse_content(self.scanner.b_tokenize(stream))
 
@@ -178,10 +195,25 @@ class PDFObject:
         self.translation_table[font_key] = char_map
 
     def _parse_xref(self):
+        end_regex = re.compile(br'^%%EOF.*?', re.S)
         with open(self.fname, 'rb') as f:
             f.seek(self.xref_start, 0)
-            ref_table = f.read()
-        return self.parser.parse(self.scanner.tokenize(str(ref_table, 'utf-8')))
+            lines = f.read().splitlines()
+            ref_lines = []
+            for l in lines:
+                ref_lines.append(l)
+                if re.match(end_regex, l):
+                    break
+
+            ref_table = b'\n'.join(ref_lines)
+
+        xref, trailer = self.parser.parse(self.scanner.tokenize(str(ref_table, 'utf-8')))
+        if 'prev' in trailer:
+            self.xref_start = trailer['prev']
+            x_2, t_2 = self._parse_xref()
+            xref.update(x_2)
+            trailer.update(t_2)
+        return xref, trailer
 
     def _raw_stream(self, stream_info, stream_data, decode_stream=True):
         decomp_typ = None
@@ -207,8 +239,9 @@ class PDFObject:
         i, stream = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
 
         #res = self.parser.parse_content(self.scanner.b_tokenize(stream))
+        #res = [t for t in self.scanner.b_tokenize(stream)]
         #pprint(res)
-        return i, stream.split(b'\n')
+        return i, stream.splitlines()
 
     def _decode_content(self, font, b_arr):
         if font in self.translation_table:
@@ -216,8 +249,16 @@ class PDFObject:
 
         f_encoding = self.fonts[font]['Encoding'].lower()
 
-        if f_encoding.startswith('macroman'):
+        if f_encoding.startswith('mac'):
             return ''.join([str(text, 'mac_roman') for text in b_arr])
+        
+        if f_encoding.startswith('winansi'):
+            return ''.join([str(text, 'cp1252') for text in b_arr])
+
+        if f_encoding.startswith('standard'):
+            return ''.join([str(text, 'latin_1') for text in b_arr])
+
+        return ''.join([str(text, 'utf-8') for text in b_arr])
 
     def _remap(self, b_stream, font):
         hx_arr = []

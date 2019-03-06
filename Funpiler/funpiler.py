@@ -27,7 +27,10 @@ class Funpiler:
         """
         with open(fname, 'rb') as f:
             f.seek(start, 0)
-            sect = f.read(end - start)
+            if end == 0:
+                sect = f.read()
+            else:
+                sect = f.read(abs(end - start))
         return sect.split(b'\n')
 
     @staticmethod
@@ -55,6 +58,12 @@ class Funpiler:
         """This can effectively parse and access objects in a PDF.
         """
         start = Funpiler._pdf_startxref(args.file)
+        print(f"Start xref: {start}")
+        if args.sect:
+            print("SECTION:\n")
+            pprint(Funpiler.read_section(args.file, *args.sect))
+            return
+
         pdf = PDFObject(args.file, start)
         pdf_scan = PdfScanner()
 
@@ -102,10 +111,6 @@ class Funpiler:
             print("TEXT:\n")
             pprint(text)
             print()
-
-        elif args.sect:
-            print("SECTION:\n")
-            pprint(Funpiler.read_section(args.file, *args.sect))
 
         else:
             print("XREF TABLE:\n")

@@ -46,7 +46,7 @@ class PdfScanner:
             ('SQUARE', r'[\[\]]'),
             ('COMMA', r','),
             ('ID', r'[A-Za-z]+'),
-            ('NEWLINE', r'\n'),
+            ('NEWLINE', r'\r\n?|\n'),
             ('WHTSPC', r'[ \t]+'),
             ('MISMATCH', r'.'),
         ]

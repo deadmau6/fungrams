@@ -14,7 +14,7 @@ class PDFParser(RecursiveParser):
         self.tokens = tokens
         self.advance()
         obj_number, gen_number, vals = self._indirect_object()
-        self.match('NEWLINE')
+        self._skip_space()
         return {
             'obj_number': obj_number,
             'gen_number': gen_number,
@@ -282,12 +282,16 @@ class PDFParser(RecursiveParser):
                 else:
                     paren_count -= 1
             elif self.current.value == b'\\':
+                #Escape literal strings.
                 self.match(None)
                 if self.current.kind == 'PAREN':
                     val = self.match(None)
                     if not isinstance(val, bytes):
                         val = bytes(val, 'utf-8')
                     literal_bytes.append(val)
+                elif self.current.value == b'\\':
+                    self.match(None)
+                    print(self.current.kind, self.current.value)
 
             else:
                 val = self.match(None)
@@ -482,13 +486,13 @@ class PDFParser(RecursiveParser):
 
     def _xref_section(self, obj_num, sect_size):
         obj_number = obj_num
-        while obj_number < sect_size:
+        while (obj_number - obj_num) < sect_size:
             byte_offset = self.match('NUMBER')
             self._skip_space()
             gen_number = self.match('NUMBER')
             self._skip_space()
             use_flag = self.match('ID') == 'n'
-            self._skip_space()
-            self.match('NEWLINE')
+            while self._skip_space():
+                pass
             yield obj_number, byte_offset, gen_number, use_flag
             obj_number += 1
