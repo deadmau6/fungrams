@@ -136,6 +136,20 @@ def pdfer_flags(sub):
         default=False
         )
     pdfer_parser.add_argument(
+        '-i',
+        '--page-images',
+        type=int,
+        help='Get image objects from a page.',
+        default=False
+        )
+    pdfer_parser.add_argument(
+        '-I',
+        '--view-image',
+        nargs='+',
+        help='Display image from a page.(must provide page object number, you can add aditional image names)',
+        default=False
+        )
+    pdfer_parser.add_argument(
         '-a',
         '--all',
         action='store_true',

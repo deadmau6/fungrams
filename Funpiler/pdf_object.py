@@ -1,6 +1,8 @@
 from .pdf_scanner import PdfScanner
 from .pdf_parser import PDFParser
 from pprint import pprint
+import numpy as np
+import cv2 as cv
 import zlib, re
 
 class PDFObject:
@@ -161,6 +163,128 @@ class PDFObject:
         
         return page, i, text_arr
 
+    def get_page_images(self, obj_number):
+        obj = self.get_indirect_object(obj_number)
+        page = None
+        for item in obj['values']:
+            obj_typ = item.get('Type')
+            if obj_typ == 'Page':
+                page = item
+                break
+
+        if page is None:
+            return "Error: please provide a page's object number."
+
+        x_obj = self.get_resources(page['Resources']).get('XObject')
+
+        if x_obj is None:
+            return "No images found"
+        
+        images = {}
+
+        for name, loc in  x_obj.items():
+            i, stream = self.get_indirect_object(loc[0], search_stream=True, decode_stream=False)
+            info = None
+            for item in i['values']:
+                sub_type = item.get('Subtype') if isinstance(item, dict) else None
+                if sub_type and sub_type.lower() == 'image':
+                    info = item
+                    break
+            if info:
+                images[name] = {
+                    'info': info,
+                    'stream': stream
+                }
+
+        return images
+
+    def display_image(self, obj_number, name=None):
+        images = self.get_page_images(obj_number)
+        if isinstance(images, str):
+            print(images)
+            return
+
+        iname, img_obj = (name, images.get(name)) if name else images.popitem()
+        info = img_obj['info']
+        w, h, color_space, bits_per_comp = (info['Width'], info['Height'], info.get('ColorSpace'), info.get('BitsPerComponent'))
+        
+        if not isinstance(color_space, str):
+            color_space = self._find_color_space(color_space)
+
+        color_depth = 1
+
+        if color_space.lower().endswith('rgb'):
+            color_depth = 3
+
+        if color_space.lower().endswith('lab'):
+            color_depth = 3
+
+        if color_space.lower().endswith('cmyk'):
+            # Fucking god dammit!
+            # needs its own "SPECIAL CONVERSION"
+            # Red = 255 * (1 - C) * (1 - K)
+            # Green = 255 * (1 - M) * (1 - K)
+            # Blue = 255 * (1 - Y) * (1 - K)
+            color_depth = 4
+
+        # This might only work because the bit depth is 8.
+        # Pdf images can have differing bit depths to save space but
+        # OpenCV only accepts uinsigned 8 bit integers (AKA 'uint8')
+        # Coincidentally if the PDF's bit depth is 8 then it works like a charm
+        # *HAVE NOT FOUND OR TESTED ON DIFFERENT BIT DEPTHS* 
+        img = np.frombuffer(img_obj['stream'], dtype=np.uint8).reshape(h, w, color_depth)
+        cv.imshow(iname, img)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+        return
+
+    def _find_color_space(self, color_space):
+        if isinstance(color_space, list):
+            best_option = None
+            
+            for color in color_space:
+                if color.lower().endswith('gray'):
+                    best_option = color
+                    break
+                if color.lower().endswith('rgb'):
+                    best_option = color
+                    break
+                if color.lower().endswith('cmyk'):
+                    best_option = color
+                    break
+                if color.lower().endswith('lab'):
+                    best_option = color
+                    break
+                best_option = color
+
+            return best_option
+
+
+        obj = self.get_indirect_object(color_space[0], search_stream=True, decode_stream=False)
+        
+        if isinstance(obj, tuple):
+            #we just want the info dict
+            obj = obj[0]
+
+        vals = obj['values'][0]
+
+        if isinstance(vals, dict):
+            color = None
+            for k, v in vals.items():
+                if k.lower() == 'alternate':
+                    color = v
+                    break
+            return color
+
+        elif isinstance(vals, list):
+            potentials = []
+            for cs in vals:
+                if isinstance(cs, tuple):
+                    potentials.append(self._find_color_space(cs))
+                elif isinstance(cs, str):
+                    potentials.append(cs)
+            return self._find_color_space(potentials)
+
     def _update_translation_table(self, font_key, cmap):
         char_map = {}
         bf_chars = cmap.get('bf_char', [])
@@ -236,12 +360,15 @@ class PDFObject:
         must use “ToUnicode” mapping files that are restricted to UCS-2 (Big Endian) encoding,
         which is equivalent to UTF-16BE encoding without Surrogates.
         """
-        i, stream = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
+        x = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
+
+        if isinstance(x, tuple):
+            x = x[0]
 
         #res = self.parser.parse_content(self.scanner.b_tokenize(stream))
         #res = [t for t in self.scanner.b_tokenize(stream)]
         #pprint(res)
-        return i, stream.splitlines()
+        return x
 
     def _decode_content(self, font, b_arr):
         if font in self.translation_table:

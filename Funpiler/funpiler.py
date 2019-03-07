@@ -110,7 +110,21 @@ class Funpiler:
             print()
             print("TEXT:\n")
             pprint(text)
-            print()
+
+        elif args.page_images:
+            image_obj = pdf.get_page_images(args.page_images)
+            print("IMAGES:\n")
+            for k, v in image_obj.items():
+                print(k)
+                pprint(v['info'])
+
+        elif args.view_image:
+            obj_num = int(args.view_image[0], 10)
+            if len(args.view_image) == 1:
+                pdf.display_image(obj_num)
+            else:
+                for name in args.view_image[1:]:
+                    pdf.display_image(obj_num, name)
 
         else:
             print("XREF TABLE:\n")
