@@ -1,5 +1,6 @@
 import numpy as np
 import cv2 as cv
+from pprint import pprint
 import math, re
 
 class Dynamic:
@@ -70,22 +71,62 @@ class Dynamic:
         with open(text_file, 'r') as f:
             data = f.read().lower()
         
-        seq = re.split(r"\W+", data)
+        seq = re.split(r"[^a-z']+", data)
         s = len(seq)
         ksize = math.ceil(800/s)
         d = s * ksize
+        win = [x+1 for x in range(2)]
+        color_grad  = math.ceil(s/255)
 
-        img = np.full((d+1 , d+1, 3), 255, np.uint8)
-        print(img.shape)
-        for i in range(0, d, ksize):
-            r = 128 + (i % 128)
-            for j in range(0, d, ksize):
-                b = 128 + (j % 128)
-                if seq[(j % s)] == seq[(i % s)]:
-                    g = r + b if r + b > 255 else 255
-                    img[i:i + ksize, j:j + ksize] = [r, g, b]
-                    img[i,j] = 0
-                    
+        img = np.full((d+1 , d+1, 4), 255, np.uint8)
+        r = 0
+        RED = 0
+        BLUE = 0
+        GREEN = 255
+        for i in range(s):
+            c = -ksize
+            RED = RED + color_grad if i % color_grad == 0 else RED
+            for j in range(s):
+                c += ksize
+                if seq[j] != seq[i]:
+                    continue
+
+                if j == i:
+                    BLUE += 1
+                    GREEN -= 1
+                    img[r:r+ksize, c:c+ksize] = [RED, GREEN, BLUE, 0]
+                    continue
+
+                strength = 0
+                for w in win:
+                    if j+w < s:
+                        if seq[j+w] == seq[j]:
+                            strength += 63
+
+                        if i+w < s and seq[j+w] == seq[i+w]:
+                            strength += 63
+
+                    if j-w > 0:
+                        if seq[j-w] == seq[j]:
+                            strength += 63
+
+                        if i-w > 0 and seq[j-w] == seq[i-w]:
+                            strength += 63
+                
+                if strength < 63:
+                    continue
+
+                val = 252 - strength
+                img[r:r+ksize, c:c+ksize] = [RED, GREEN, BLUE, val]
+                #if val-RED >= 0 and val+RED <= 255:
+                #    val_r, val_b = (val-RED, val+RED ) 
+                #    img[r:r+ksize, c:c+ksize] = [val_r, val, val_b, val]
+                #else:
+                #    img[r:r+ksize, c:c+ksize] = [RED, 0, 255, val]
+                
+            r += ksize
+
+        print(img.shape, s, ksize)
 
         cv.imshow('image', img)
         cv.waitKey(0)
