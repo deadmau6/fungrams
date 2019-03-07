@@ -33,6 +33,13 @@ def dp_flags(sub):
         metavar=('X', 'Y'),
         default=False
         )
+    dp_tools.add_argument(
+        '-w',
+        '--word-image',
+        type=str,
+        help='Text File location.',
+        default=False
+        )
     dp_parser.set_defaults(func=dp.start)
 
 def things_flags(sub):
