@@ -68,8 +68,8 @@ class Dynamic:
 
     @staticmethod
     def similarity_seq_image(text_file):
-        with open(text_file, 'r') as f:
-            data = f.read().lower()
+        with open(text_file, 'rb') as f:
+            data = f.read().decode('utf-8', 'ignore').lower()
         
         seq = re.split(r"[^a-z']+", data)
         s = len(seq)
