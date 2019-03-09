@@ -58,7 +58,7 @@ class Funpiler:
         """This can effectively parse and access objects in a PDF.
         """
         start = Funpiler._pdf_startxref(args.file)
-        print(f"Start xref: {start}")
+        #print(f"Start xref: {start}")
         if args.sect:
             print("SECTION:\n")
             pprint(Funpiler.read_section(args.file, *args.sect))

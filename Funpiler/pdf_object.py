@@ -1,9 +1,10 @@
 from .pdf_scanner import PdfScanner
 from .pdf_parser import PDFParser
 from pprint import pprint
+from scipy import ndimage
 import numpy as np
 import cv2 as cv
-import zlib, re
+import zlib, re, io
 
 class PDFObject:
 
@@ -179,6 +180,9 @@ class PDFObject:
 
         if x_obj is None:
             return "No images found"
+
+        if isinstance(x_obj, tuple):
+            x_obj = self.get_indirect_object(x_obj[0])['values'][0]
         
         images = {}
 
@@ -201,89 +205,39 @@ class PDFObject:
     def display_image(self, obj_number, name=None):
         images = self.get_page_images(obj_number)
         if isinstance(images, str):
+            # Images returns a str if no images are found on the page
             print(images)
             return
 
+        # Get specific named image or just the first one
         iname, img_obj = (name, images.get(name)) if name else images.popitem()
         info = img_obj['info']
         w, h, color_space, bits_per_comp = (info['Width'], info['Height'], info.get('ColorSpace'), info.get('BitsPerComponent'))
-        
-        if not isinstance(color_space, str):
-            color_space = self._find_color_space(color_space)
 
-        color_depth = 1
-
-        if color_space.lower().endswith('rgb'):
-            color_depth = 3
-
-        if color_space.lower().endswith('lab'):
-            color_depth = 3
-
-        if color_space.lower().endswith('cmyk'):
-            # Fucking god dammit!
-            # needs its own "SPECIAL CONVERSION"
-            # Red = 255 * (1 - C) * (1 - K)
-            # Green = 255 * (1 - M) * (1 - K)
-            # Blue = 255 * (1 - Y) * (1 - K)
-            color_depth = 4
+        color_depth = self._color_depth(color_space)
 
         # This might only work because the bit depth is 8.
         # Pdf images can have differing bit depths to save space but
         # OpenCV only accepts uinsigned 8 bit integers (AKA 'uint8')
         # Coincidentally if the PDF's bit depth is 8 then it works like a charm
-        # *HAVE NOT FOUND OR TESTED ON DIFFERENT BIT DEPTHS* 
-        img = np.frombuffer(img_obj['stream'], dtype=np.uint8).reshape(h, w, color_depth)
+        # *HAVE NOT FOUND OR TESTED ON DIFFERENT BIT DEPTHS*
+        
+        img = self._convert_to_image(img_obj['stream'], (h, w, color_depth))
         cv.imshow(iname, img)
         cv.waitKey(0)
         cv.destroyAllWindows()
         return
 
-    def _find_color_space(self, color_space):
-        if isinstance(color_space, list):
-            best_option = None
-            
-            for color in color_space:
-                if color.lower().endswith('gray'):
-                    best_option = color
-                    break
-                if color.lower().endswith('rgb'):
-                    best_option = color
-                    break
-                if color.lower().endswith('cmyk'):
-                    best_option = color
-                    break
-                if color.lower().endswith('lab'):
-                    best_option = color
-                    break
-                best_option = color
+    def _jpeg_to_image(self, jpg_stream):
+        jpg_file = io.BytesIO(jpg_stream['data'])
+        return ndimage.imread(jpg_file)
 
-            return best_option
-
-
-        obj = self.get_indirect_object(color_space[0], search_stream=True, decode_stream=False)
+    def _convert_to_image(self, image_stream, shape):
+        if isinstance(image_stream, dict):
+            if image_stream['compression'] == 'jpeg':
+                return self._jpeg_to_image(image_stream)
         
-        if isinstance(obj, tuple):
-            #we just want the info dict
-            obj = obj[0]
-
-        vals = obj['values'][0]
-
-        if isinstance(vals, dict):
-            color = None
-            for k, v in vals.items():
-                if k.lower() == 'alternate':
-                    color = v
-                    break
-            return color
-
-        elif isinstance(vals, list):
-            potentials = []
-            for cs in vals:
-                if isinstance(cs, tuple):
-                    potentials.append(self._find_color_space(cs))
-                elif isinstance(cs, str):
-                    potentials.append(cs)
-            return self._find_color_space(potentials)
+        return np.frombuffer(image_stream, dtype=np.uint8).reshape(shape)
 
     def _update_translation_table(self, font_key, cmap):
         char_map = {}
@@ -340,19 +294,45 @@ class PDFObject:
         return xref, trailer
 
     def _raw_stream(self, stream_info, stream_data, decode_stream=True):
+        #Watch out for FFilters and FDecodeParms
         decomp_typ = None
+        params = None
         for item in stream_info:
             if 'Filter' in item:
                 decomp_typ = item['Filter']
+                params = item.get('DecodeParms')
                 break
+        
+        if decomp_typ is None:
+            return stream_data
 
-        if decomp_typ.lower() == 'flatedecode':
-            if decode_stream:
-                return zlib.decompress(stream_data).decode('utf-8')
-            else:
-                return zlib.decompress(stream_data)
+        if decode_stream:
+            return self._decompress_stream(stream_data, decomp_typ, params).decode('utf-8')
+        
+        return self._decompress_stream(stream_data, decomp_typ, params)
 
-        return stream_data
+    def _decompress_stream(self, data, d_type, d_params):
+        if isinstance(d_type, list):
+            # There can be a compression pipeline
+            return None
+
+        decomp = d_type.lower()
+
+        if decomp == 'flatedecode':
+            if d_params:
+                dflate = zlib.decompress(data)
+                t_row = 3301 * 3
+                b_total = t_row * 2560
+                return dflate
+            return zlib.decompress(data)
+
+        if decomp == 'dctdecode':
+            # For JPEGs only, DCT = Discrete Cosine Transform 
+            return {
+                'compression': 'jpeg',
+                'args': d_params,
+                'data': data
+            }
 
     def _parse_content(self, obj_number):
         """
@@ -360,15 +340,13 @@ class PDFObject:
         must use “ToUnicode” mapping files that are restricted to UCS-2 (Big Endian) encoding,
         which is equivalent to UTF-16BE encoding without Surrogates.
         """
-        x = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
-
-        if isinstance(x, tuple):
-            x = x[0]
-
+        i, stream = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
         #res = self.parser.parse_content(self.scanner.b_tokenize(stream))
         #res = [t for t in self.scanner.b_tokenize(stream)]
         #pprint(res)
-        return x
+        with open('test.png', 'wb') as f:
+            f.write(stream)
+        return i, len(stream)
 
     def _decode_content(self, font, b_arr):
         if font in self.translation_table:
@@ -408,4 +386,156 @@ class PDFObject:
                 text.append(bytearray.fromhex(code).decode())
 
         return ''.join(text)
+
+    def _color_depth(self, color_space):
+        # Color space can be array or name
+        if color_space is None:
+            # TODO: handle JPXDecode which is the only case color space is None
+            return 1
+
+        if isinstance(color_space, tuple):
+            cs_obj = self.get_indirect_object(color_space[0], search_stream=True, decode_stream=False)
+            if isinstance(cs_obj, tuple):
+                # ICC might be a stream so tuple is returned
+                cs_obj = cs_obj[0]
+
+            new_color_space = cs_obj['values'][0]
+            return self._color_depth(new_color_space)
+
+        name = None
+        cs_args = None
+
+        if isinstance(color_space, str):
+            name = color_space.lower()
+
+        elif isinstance(color_space, list):
+            name = color_space[0].lower()
+            if len(color_space) > 1:
+                cs_args = color_space[1:]
+
+        if name.startswith('device'):
+            return self._device_color_space(name, cs_args)
         
+        if name.startswith('cal') or name in ['lab', 'iccbased']:
+            return self._cie_color_space(name, cs_args)
+
+        return self._special_color_space(name, cs_args)
+
+    def _device_color_space(self, color_space, cspace_args=None):
+        if color_space.endswith('gray'):
+            return 1
+
+        if color_space.endswith('rgb'):
+            return 3
+
+        if color_space.endswith('cmyk'):
+            # needs its own "SPECIAL CONVERSION" maybe
+            # Red = 255 * (1 - C) * (1 - K)
+            # Green = 255 * (1 - M) * (1 - K)
+            # Blue = 255 * (1 - Y) * (1 - K)
+            return 4
+        # Must be DeviceN which is actually a special color space
+        return self._special_color_space(color_space, cspace_args)
+
+    def _cie_color_space(self, color_space, cspace_args=None):
+        # CalRGB,CalGray, Lab, ICCBased
+        if color_space.endswith('gray'):
+            return 1
+
+        if color_space.endswith('rgb'):
+            return 3
+
+        if color_space.endswith('lab'):
+            return 3
+
+        if color_space.endswith('cmyk'):
+            return 4
+        
+        # [/ICCBased, stream]
+        # cspace_args should be indirect object
+        iccbased, icc_stream = self.get_indirect_object(cspace_args[0][0], search_stream=True, decode_stream=False)
+        icc = iccbased['values'][0]
+        return icc['N']
+    
+    def _special_color_space(self, color_space, cspace_args=None):
+        # Separation, DeviceN, Indexed, Pattern
+        # *NOTE* TINTS ARE SUBTRACTIVE SO 0.0 denotes lightest of a color & 1.0 is the darkest! 
+        if color_space == 'indexed':
+            # Allows color components to be represented in a single component
+            # 
+            # [/Indexed, base, hival, lookup]
+            # base = a color space used to define the color table
+            # hival = max iinteger range of the color table (0 < hival <= 255)
+            # lookup = the color table, can be a stream or byte string
+            # lookup_size = base_color_depth * (hival + 1)
+            return 1
+        if color_space == 'separation':
+            # (see subtractive notes above)
+            # Used to control processes on a single colorant like cyan and
+            # this is really only used for printers/printing devices.
+            # 
+            # [/Separation, name, alternateSpace, tintTransform]
+            # name = name object specifying the colorant (can be All or None)
+            # alternateSpace = alternative color space (can be array or name object)(any non special color space)
+            # tintTransform = a function used to transform tint to color
+            name, alternate, tint = (None, None, None)
+            for x in cspace_args:
+                if isinstance(x, tuple):
+                    tint = x
+                elif isinstance(x, list):
+                    alternate = x
+                    break
+                else:
+                    if x.lower() in ['devicecmyk', 'devicergb', 'devicegray', 'calrgb' , 'calgray', 'lab', 'iccbased']:
+                        alternate = x.lower()
+                        break
+                    name = x
+            if isinstance(alternate, list):
+                return self._color_depth(alternate)
+
+            if alternate.startswith('device'):
+                return self._device_color_space(alternate)
+            
+            return self._cie_color_depth(alternate)
+        if color_space == 'pattern':
+            # Please God No!, this one is a real shit show.
+            # 
+            # Types:
+            # Tiling Patterns (subtypes: Color or Non-Color)
+            # Shading Patterns (7 different subtypes)
+            return cspace_args
+        # (see subtractive notes above)
+        # Whole buncha crap if there is an SubType == NChannel in attributes, totally different rules(i think)
+        # AKA: len(name) = color_depth
+        # name -maps-to-> alternate w\(tintTransform) THEN alternate -maps-to-> out w\(attributes(sometimes))
+        # 
+        # [/DeviceN, name, alternateSpace, tintTransform, attributes(optional)]
+        # name = array of name objects specifying color components (can be 'None')
+        # alternateSpace = alternative color space (can be array or name object)(any non special color space)
+        # tintTransform = a function used to transform tint to color
+        # attributes = dictionary containing extra info for custom image blending
+        name, alternate, tint, attributes = (None, None, None, None)
+        for x in cspace_args:
+            if isinstance(x, tuple):
+                tint = x
+            elif isinstance(x, dict):
+                attributes = x
+            elif isinstance(x, list):
+                is_alter = False
+                for nm in x:
+                    if nm.lower() in ['devicecmyk', 'devicergb', 'devicegray', 'calrgb' , 'calgray', 'lab', 'iccbased']:
+                        is_alter = True
+                        break
+                if is_alter:
+                    alternate = x
+                else:
+                    name = x
+            else:
+                alternate = x.lower()
+        #if isinstance(alternate, list):
+        #    return self._color_depth(alternate)
+        #if alternate.startswith('device'):
+        #    return self._device_color_space(alternate)
+        #return self._cie_color_depth(alternate)
+        # I think this is the over all depth?
+        return len(name)
