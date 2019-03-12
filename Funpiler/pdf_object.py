@@ -232,45 +232,6 @@ class PDFObject:
         jpg_file = io.BytesIO(jpg_stream['data'])
         return ndimage.imread(jpg_file)
 
-    def _png_sub_prediction(self, bpp, row):
-        """Encoding Formula:
-        Sub(x) = Raw(x) - Raw(x - bpp)
-        * Raw(x) -> raw byte where x is the position in the row
-        * bpp or bytes_per_pixel -> ceil( color_depth * (bitsperComponent / 8))
-        
-        Decoding Formula:
-        Sub(x) + Raw(x - bpp)
-        """
-        #TODO: work out different bpp's
-        # Right now assume component = 1 byte
-        for x in range(bpp, int(len(row)/2)+bpp, bpp):
-            yield row[x] + row[x - bpp]
-
-    def _png_up_prediction(self, prev, curr):
-        """Encoding Formula:
-        Up(x) = Raw(x) - Prior(x)
-        * Raw(x) -> raw byte where x is the position in the row
-        * Prior(x) -> raw byte of the previous row in position x (AKA the byte above) 
-
-        Decoding Formula:
-        Up(x) + Prior(x)
-        """
-        for x in range(len(curr)):
-            yield curr[x] + prev[x]
-
-    def _png_avg_prediction(self, bpp, prev, curr):
-        """Encoding Formula:
-        Avg(x) = Raw(x) - floor((Raw(x - bpp) + Prior(x)) / 2)
-        * Raw(x) -> raw byte where x is the position in the row
-        * bpp or bytes_per_pixel -> ceil( color_depth * (bitsperComponent / 8))
-        * Prior(x) -> raw byte of the previous row in position x (AKA the byte above)
-
-        Decoding Formula:
-        Avg(x) + floor((Raw(x - bpp) + Prior(x)) / 2)
-        """
-        for x in range(bpp, len(curr), 1):
-            yield curr[x] + math.floor((curr[x - bpp] + prev[x]))
-
     def _paeth_predictor(self, left, above, upper_left):
         # Source: https://www.w3.org/TR/PNG-Filters.html
         initial_estimate = left + above - upper_left
@@ -286,19 +247,58 @@ class PDFObject:
         else:
             return upper_left
 
-    def _png_paeth_prediction(self, bpp, prev, curr):
-        """Encoding Formula:
-        Paeth(x) = Raw(x) - _paeth_predictor(Raw(x - bpp), Prior(x), Prior(x - bpp))
-        * Raw(x) -> raw byte where x is the position in the row
-        * bpp or bytes_per_pixel -> ceil( color_depth * (bitsperComponent / 8))
-        * Prior(x) -> raw byte of the previous row in position x (AKA the byte above)
-        * Prior(x - bpp) -> essentially upper left pixel
-
-        Decoding Formula:
-        Paeth(x) + _paeth_predictor(Raw(x - bpp), Prior(x), Prior(x - bpp))
+    def _png_prediction(self, columns, row_size, bpp, data):
+        """ Sources:
+        * https://github.com/davidben/poppler/blob/master/poppler/Stream.cc
+        * https://github.com/davidben/poppler
+        * https://www.w3.org/TR/PNG-Filters.html
         """
-        for x in len(bpp, len(curr), 1):
-            yield curr[x] + self._paeth_predictor(curr[x - bpp], prev[x], prev[x - bpp])
+        k = 0
+        # initialize the prediction line to all zeros
+        predline = [0] * row_size
+        final = []
+        while k < len(data):
+            # Each row is prefaced with a 'prediction'
+            curr_pred = data[k]
+            # "Cut off" the prediction byte
+            k += 1
+            # initialize an empty up_left_buffer (only used for paeth prediction)
+            up_left_buffer = [0] * (bpp + 1)
+            # iterate through the row/line
+            for i in range(bpp, row_size):
+                # just in case
+                try:
+                    raw = data[k]
+                    k += 1
+                except Exception as e:
+                    break
+
+                # This conditional is evalulated per line/row(AKA: curr_pred shouldn't change in this for loop)
+                if curr_pred == 1:
+                    # PNG(1) Sub
+                    predline[i] = predline[i - bpp] + raw
+                elif curr_pred == 2:
+                    # PNG(2) Up
+                    predline[i] += raw
+                elif curr_pred == 3:
+                    # PNG(3) Average
+                    predline[i] = ((predline[i - bpp] + predline[i]) >> 1) + raw
+                elif curr_pred == 4:
+                    # PNG(4) Paeth
+                    # slide the up_left_buffer one over to the right
+                    for j in range(bpp, 0, -1):
+                        up_left_buffer[j] = up_left_buffer[j - 1]
+                    # set the start of the up_left_buffer to the current
+                    up_left_buffer[0] = predline[i]
+
+                    predline[i] = self._paeth_predictor(predline[i - bpp], predline[i], up_left_buffer[bpp]) + raw
+                else:
+                    # PNG(0) No prediction
+                    predline[i] = raw
+            # Each row/line is buffered by the previous line's pixel which eqauls bpp
+            final.append(predline[bpp:row_size])
+
+        return np.array(final, dtype=np.uint8).reshape(len(final), columns, bpp)
         
     def _filtered_to_image(self, shape, params, data):
         """helpful docs = https://www.w3.org/TR/PNG-Filters.html
@@ -319,78 +319,19 @@ class PDFObject:
 
         colors = params.get('Colors', 1)
         columns = params.get('Columns') or shape[1]
-        bpc = params.get('BitsPerComponent', 8)
-        bpp = (colors * bpc + 7) >> 3
-        row_size = ((columns * colors * bpc + 7) >> 3) + bpp
 
+        bpc = params.get('BitsPerComponent', 8)
+        n = columns * colors
+        # bytes per pixel!
+        bpp = (colors * bpc + 7) >> 3
+        row_size = ((n * bpc + 7) >> 3) + bpp
+        p_index = row_size
+
+        #TIFF
         if prediction == 2:
-            # TIFF
             return np.frombuffer(data, dtype=np.uint8).reshape(shape)
 
-        for i in range(b_pixel, b_rows):
-            for j in range(b_pixel, 0, -1):
-                pass
-            pass
-
-        if prediction == 11:
-            return
-
-        if prediction == 12:
-            return
-
-        if prediction == 13:
-            return
-
-        if prediction == 14:
-            return
-
-        if prediction == 15:
-            colors = params.get('Colors')
-            p_row_size = shape[0] * shape[2]
-            r_size = shape[0]
-            num_of_columns = params.get('Columns') or shape[1]
-
-            given_size = len(data)
-            #total = (given_size - (given_size % row_size)) + num_of_columns
-            i = 0
-            final = []
-            #rows = np.frombuffer(data, dtype=uint8)
-            bpp = 3
-            while i <= given_size:
-                prefix = data[i]
-                i += 1
-                if prefix == 1:
-                    print(prefix, i)
-                    row = [x for x in self._png_sub_prediction(bpp, data[i: i + p_row_size])]
-                    print(len(row))
-                    final.extend(row)
-                    i += p_row_size + 1
-
-                elif prefix == 2:
-                    print(prefix)
-
-                    #final.extend([x for x in self._png_up_prediction(bpp, data[i: r_size], data[r_size + 1: p_row_size + 1])])
-                    i += p_row_size + 2
-
-                elif prefix == 3:
-                    print(prefix)
-
-                    #final.extend([x for x in self._png_up_prediction(bpp, data[i: r_size], data[r_size + 1: p_row_size + 1])])
-                    i += p_row_size + 2
-
-                elif prefix == 4:
-                    print(prefix)
-
-                    #final.extend([x for x in self._png_up_prediction(bpp, data[i: r_size], data[r_size + 1: p_row_size + 1])])
-                    i += p_row_size + 2
-
-                else:
-                    final.extend(data[i: i+r_size])
-                    i += r_size + 1
-
-            return np.array(final, dtype=np.uint8)
-        # PNG No prediction
-        return
+        return self._png_prediction(columns, row_size, bpp, data)
 
     def _convert_to_image(self, image_stream, shape):
         if isinstance(image_stream, dict):
@@ -510,10 +451,10 @@ class PDFObject:
         img = self._convert_to_image(stream, (3300, 2560, 3))
         #img = np.frombuffer(stream, dtype=np.uint8).reshape((3300, 7681))
         pprint(img.shape)
-        #res = cv.cvtColor(img, cv.COLOR_XYZ2RGB)
-        #cv.imshow('iname', res)
-        #cv.waitKey(0)
-        #cv.destroyAllWindows()
+        res = cv.resize(img, None, fx=0.5, fy=0.5)
+        cv.imshow('iname', res)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
         return i
 
     def _decode_content(self, font, b_arr):
