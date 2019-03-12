@@ -317,9 +317,20 @@ class PDFObject:
         if prediction is None or prediction == 1:
             return np.frombuffer(data, dtype=np.uint8).reshape(shape)
 
+        colors = params.get('Colors', 1)
+        columns = params.get('Columns') or shape[1]
+        bpc = params.get('BitsPerComponent', 8)
+        bpp = (colors * bpc + 7) >> 3
+        row_size = ((columns * colors * bpc + 7) >> 3) + bpp
+
         if prediction == 2:
             # TIFF
             return np.frombuffer(data, dtype=np.uint8).reshape(shape)
+
+        for i in range(b_pixel, b_rows):
+            for j in range(b_pixel, 0, -1):
+                pass
+            pass
 
         if prediction == 11:
             return
