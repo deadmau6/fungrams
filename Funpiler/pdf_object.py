@@ -4,7 +4,7 @@ from pprint import pprint
 from scipy import ndimage
 import numpy as np
 import cv2 as cv
-import zlib, re, io
+import zlib, re, io, math
 
 class PDFObject:
 
@@ -232,10 +232,161 @@ class PDFObject:
         jpg_file = io.BytesIO(jpg_stream['data'])
         return ndimage.imread(jpg_file)
 
+    def _png_sub_prediction(self, bpp, row):
+        """Encoding Formula:
+        Sub(x) = Raw(x) - Raw(x - bpp)
+        * Raw(x) -> raw byte where x is the position in the row
+        * bpp or bytes_per_pixel -> ceil( color_depth * (bitsperComponent / 8))
+        
+        Decoding Formula:
+        Sub(x) + Raw(x - bpp)
+        """
+        #TODO: work out different bpp's
+        # Right now assume component = 1 byte
+        for x in range(bpp, int(len(row)/2)+bpp, bpp):
+            yield row[x] + row[x - bpp]
+
+    def _png_up_prediction(self, prev, curr):
+        """Encoding Formula:
+        Up(x) = Raw(x) - Prior(x)
+        * Raw(x) -> raw byte where x is the position in the row
+        * Prior(x) -> raw byte of the previous row in position x (AKA the byte above) 
+
+        Decoding Formula:
+        Up(x) + Prior(x)
+        """
+        for x in range(len(curr)):
+            yield curr[x] + prev[x]
+
+    def _png_avg_prediction(self, bpp, prev, curr):
+        """Encoding Formula:
+        Avg(x) = Raw(x) - floor((Raw(x - bpp) + Prior(x)) / 2)
+        * Raw(x) -> raw byte where x is the position in the row
+        * bpp or bytes_per_pixel -> ceil( color_depth * (bitsperComponent / 8))
+        * Prior(x) -> raw byte of the previous row in position x (AKA the byte above)
+
+        Decoding Formula:
+        Avg(x) + floor((Raw(x - bpp) + Prior(x)) / 2)
+        """
+        for x in range(bpp, len(curr), 1):
+            yield curr[x] + math.floor((curr[x - bpp] + prev[x]))
+
+    def _paeth_predictor(self, left, above, upper_left):
+        # Source: https://www.w3.org/TR/PNG-Filters.html
+        initial_estimate = left + above - upper_left
+
+        distance_left = abs(initial_estimate - left)
+        distance_above = abs(initial_estimate - above)
+        distance_upper_left = abs(initial_estimate - upper_left)
+        
+        if distance_left <= distance_above and distance_left <= distance_upper_left:
+            return left
+        elif distance_above <= distance_upper_left:
+            return above
+        else:
+            return upper_left
+
+    def _png_paeth_prediction(self, bpp, prev, curr):
+        """Encoding Formula:
+        Paeth(x) = Raw(x) - _paeth_predictor(Raw(x - bpp), Prior(x), Prior(x - bpp))
+        * Raw(x) -> raw byte where x is the position in the row
+        * bpp or bytes_per_pixel -> ceil( color_depth * (bitsperComponent / 8))
+        * Prior(x) -> raw byte of the previous row in position x (AKA the byte above)
+        * Prior(x - bpp) -> essentially upper left pixel
+
+        Decoding Formula:
+        Paeth(x) + _paeth_predictor(Raw(x - bpp), Prior(x), Prior(x - bpp))
+        """
+        for x in len(bpp, len(curr), 1):
+            yield curr[x] + self._paeth_predictor(curr[x - bpp], prev[x], prev[x - bpp])
+        
+    def _filtered_to_image(self, shape, params, data):
+        """helpful docs = https://www.w3.org/TR/PNG-Filters.html
+        Prediction Values & meanings:
+        (1)  -> No prediction (defualt)
+        (2)  -> TIFF predictor
+        (10) -> PNG(0) No prediction on all rows 
+        (11) -> PNG(1) Sub on all rows = predicts the same as the sample to the left
+        (12) -> PNG(2) Up on all rows = predicts the same as the sample above
+        (13) -> PNG(3) Average on all rows = predicts the avg of sample to the left and above
+        (14) -> PNG(4) Paeth on all rows = nonlinear function of the sample above, left, and upper left.
+        (15) -> PNG optimum (any of the above for each row)
+        """
+        prediction = params.get('Predictor')
+
+        if prediction is None or prediction == 1:
+            return np.frombuffer(data, dtype=np.uint8).reshape(shape)
+
+        if prediction == 2:
+            # TIFF
+            return np.frombuffer(data, dtype=np.uint8).reshape(shape)
+
+        if prediction == 11:
+            return
+
+        if prediction == 12:
+            return
+
+        if prediction == 13:
+            return
+
+        if prediction == 14:
+            return
+
+        if prediction == 15:
+            colors = params.get('Colors')
+            p_row_size = shape[0] * shape[2]
+            r_size = shape[0]
+            num_of_columns = params.get('Columns') or shape[1]
+
+            given_size = len(data)
+            #total = (given_size - (given_size % row_size)) + num_of_columns
+            i = 0
+            final = []
+            #rows = np.frombuffer(data, dtype=uint8)
+            bpp = 3
+            while i <= given_size:
+                prefix = data[i]
+                i += 1
+                if prefix == 1:
+                    print(prefix, i)
+                    row = [x for x in self._png_sub_prediction(bpp, data[i: i + p_row_size])]
+                    print(len(row))
+                    final.extend(row)
+                    i += p_row_size + 1
+
+                elif prefix == 2:
+                    print(prefix)
+
+                    #final.extend([x for x in self._png_up_prediction(bpp, data[i: r_size], data[r_size + 1: p_row_size + 1])])
+                    i += p_row_size + 2
+
+                elif prefix == 3:
+                    print(prefix)
+
+                    #final.extend([x for x in self._png_up_prediction(bpp, data[i: r_size], data[r_size + 1: p_row_size + 1])])
+                    i += p_row_size + 2
+
+                elif prefix == 4:
+                    print(prefix)
+
+                    #final.extend([x for x in self._png_up_prediction(bpp, data[i: r_size], data[r_size + 1: p_row_size + 1])])
+                    i += p_row_size + 2
+
+                else:
+                    final.extend(data[i: i+r_size])
+                    i += r_size + 1
+
+            return np.array(final, dtype=np.uint8)
+        # PNG No prediction
+        return
+
     def _convert_to_image(self, image_stream, shape):
         if isinstance(image_stream, dict):
-            if image_stream['compression'] == 'jpeg':
+            if image_stream['compression'] == 'dct':
                 return self._jpeg_to_image(image_stream)
+            elif image_stream['compression'] == 'filtered':
+                return self._filtered_to_image(shape, image_stream['args'], image_stream['data'])
         
         return np.frombuffer(image_stream, dtype=np.uint8).reshape(shape)
 
@@ -320,16 +471,17 @@ class PDFObject:
 
         if decomp == 'flatedecode':
             if d_params:
-                dflate = zlib.decompress(data)
-                t_row = 3301 * 3
-                b_total = t_row * 2560
-                return dflate
+                return {
+                    'compression': 'filtered',
+                    'args': d_params,
+                    'data': zlib.decompress(data)
+                }
             return zlib.decompress(data)
 
         if decomp == 'dctdecode':
             # For JPEGs only, DCT = Discrete Cosine Transform 
             return {
-                'compression': 'jpeg',
+                'compression': 'dct',
                 'args': d_params,
                 'data': data
             }
@@ -344,9 +496,14 @@ class PDFObject:
         #res = self.parser.parse_content(self.scanner.b_tokenize(stream))
         #res = [t for t in self.scanner.b_tokenize(stream)]
         #pprint(res)
-        with open('test.png', 'wb') as f:
-            f.write(stream)
-        return i, len(stream)
+        img = self._convert_to_image(stream, (3300, 2560, 3))
+        #img = np.frombuffer(stream, dtype=np.uint8).reshape((3300, 7681))
+        pprint(img.shape)
+        #res = cv.cvtColor(img, cv.COLOR_XYZ2RGB)
+        #cv.imshow('iname', res)
+        #cv.waitKey(0)
+        #cv.destroyAllWindows()
+        return i
 
     def _decode_content(self, font, b_arr):
         if font in self.translation_table:
