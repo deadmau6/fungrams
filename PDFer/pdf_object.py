@@ -2,6 +2,7 @@ from .pdf_scanner import PdfScanner
 from .pdf_parser import PDFParser
 from pprint import pprint
 from scipy import ndimage
+from os.path import abspath
 import numpy as np
 import cv2 as cv
 import zlib, re, io, math
@@ -202,7 +203,7 @@ class PDFObject:
 
         return images
 
-    def display_image(self, obj_number, name=None):
+    def display_image(self, save, obj_number, name=None):
         images = self.get_page_images(obj_number)
         if isinstance(images, str):
             # Images returns a str if no images are found on the page
@@ -226,6 +227,10 @@ class PDFObject:
         cv.imshow(iname, img)
         cv.waitKey(0)
         cv.destroyAllWindows()
+        if save:
+            # Same as os.path.join(os.getcwd(), *path). 
+            fname = abspath(f"{iname}.jpg")
+            cv.imwrite(fname, img)
         return
 
     def _jpeg_to_image(self, jpg_stream):

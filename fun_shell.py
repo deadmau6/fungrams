@@ -158,6 +158,13 @@ def pdfer_flags(sub):
         default=False
         )
     pdfer_parser.add_argument(
+        '-S',
+        '--save-image',
+        action='store_true',
+        help='Save displayed image from a page.',
+        default=False
+        )
+    pdfer_parser.add_argument(
         '-a',
         '--all',
         action='store_true',
