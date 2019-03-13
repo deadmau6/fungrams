@@ -1,6 +1,7 @@
 from DP import Dynamic
 from Things import Things
 from Funpiler import Funpiler
+from PDFer import PDFer
 import argparse
 
 def dp_flags(sub):
@@ -82,8 +83,8 @@ def funpiler_flags(sub):
     funpiler_parser.set_defaults(func=funpiler.start)
 
 def pdfer_flags(sub):
-    pdfer = Funpiler()
-    pdfer_parser = sub.add_parser("pdfer", help=Funpiler.start_pdf.__doc__)
+    pdfer = PDFer()
+    pdfer_parser = sub.add_parser("pdfer", help=PDFer.start.__doc__)
     
     pdfer_parser.add_argument(
         '-f',
@@ -171,7 +172,7 @@ def pdfer_flags(sub):
         help='Get a section of the pdf file given the start and end in bytes.',
         metavar=('START', 'END')
         )
-    pdfer_parser.set_defaults(func=pdfer.start_pdf)
+    pdfer_parser.set_defaults(func=pdfer.start)
 
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
