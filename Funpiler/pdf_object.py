@@ -324,6 +324,7 @@ class PDFObject:
         n = columns * colors
         # bytes per pixel!
         bpp = (colors * bpc + 7) >> 3
+        # total bytes in the prediction row/line
         row_size = ((n * bpc + 7) >> 3) + bpp
         p_index = row_size
 
@@ -444,24 +445,21 @@ class PDFObject:
         must use “ToUnicode” mapping files that are restricted to UCS-2 (Big Endian) encoding,
         which is equivalent to UTF-16BE encoding without Surrogates.
         """
-        i, stream = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
+        x = self.get_indirect_object(obj_number, search_stream=True, decode_stream=False)
         #res = self.parser.parse_content(self.scanner.b_tokenize(stream))
         #res = [t for t in self.scanner.b_tokenize(stream)]
         #pprint(res)
-        img = self._convert_to_image(stream, (3300, 2560, 3))
-        #img = np.frombuffer(stream, dtype=np.uint8).reshape((3300, 7681))
-        pprint(img.shape)
-        res = cv.resize(img, None, fx=0.5, fy=0.5)
-        cv.imshow('iname', res)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
-        return i
+        
+        return x
 
     def _decode_content(self, font, b_arr):
         if font in self.translation_table:
             return ''.join(self._remap(b_arr, font))
 
-        f_encoding = self.fonts[font]['Encoding'].lower()
+        f_encoding = self.fonts[font]['Encoding']
+        if isinstance(f_encoding, tuple):
+            fnts = self.get_indirect_object(f_encoding[0])['values'][0]
+            f_encoding = fnts['BaseEncoding']
 
         if f_encoding.startswith('mac'):
             return ''.join([str(text, 'mac_roman') for text in b_arr])
