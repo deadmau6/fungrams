@@ -38,24 +38,6 @@ class PdfDoc:
             return indirect['values'][0]
         return indirect['values']
 
-    def _raw_stream(self, stream_info, stream_data):
-        #Watch out for FFilters and FDecodeParms
-        decomp_typ = None
-        params = None
-        for item in stream_info:
-            if 'Filter' in item:
-                decomp_typ = item['Filter']
-                params = item.get('DecodeParms')
-                break
-        
-        if decomp_typ is None:
-            return stream_data
-
-        if decode_stream:
-            return self._decompress_stream(stream_data, decomp_typ, params).decode('utf-8')
-        
-        return self._decompress_stream(stream_data, decomp_typ, params)
-
     def get_indirect_object(self, obj_number, search_stream=False):
         data = self.xref.get_object(obj_number)
 
@@ -73,30 +55,6 @@ class PdfDoc:
             return info, stream
 
         return self._indirect_values(data)
-
-    def _decompress_stream(self, data, d_type, d_params):
-        if isinstance(d_type, list):
-            # There can be a compression pipeline
-            return None
-
-        decomp = d_type.lower()
-
-        if decomp == 'flatedecode':
-            if d_params:
-                return {
-                    'compression': 'filtered',
-                    'args': d_params,
-                    'data': zlib.decompress(data)
-                }
-            return zlib.decompress(data)
-
-        if decomp == 'dctdecode':
-            # For JPEGs only, DCT = Discrete Cosine Transform 
-            return {
-                'compression': 'dct',
-                'args': d_params,
-                'data': data
-            }
 
     def _parse_file_tail(self):
         end_regex = re.compile(br'^%%EOF.*?', re.S)
