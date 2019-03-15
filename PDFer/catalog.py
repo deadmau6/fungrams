@@ -23,7 +23,7 @@ class Catalog:
 
         complete = []
         for k in kids:
-            complete.extend(self._get_page_tree(k))
+            complete.extend(self._build_page_tree(k))
         return complete
 
     def setup(self, root):
@@ -51,3 +51,11 @@ class Catalog:
         Page_number = index + 1 therefore Page = self.pages[page_number - 1]
         """
         return Page(self.document, self.document.get_object(self.pages[page_number - 1]))
+
+    def toJSON(self):
+        return {
+            'root': self.root,
+            'info': self.info,
+            'total_pages': len(self.pages),
+            'pages': self.pages
+        }

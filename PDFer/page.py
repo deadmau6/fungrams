@@ -8,12 +8,11 @@ class Page:
         # Required
         self._resources = page_object.pop('Resources')
         # Optional
-        if 'Contents' in page_object:
-            self._contents = page_object.pop('Contents')
+        self._contents = page_object.pop('Contents') if 'Contents' in page_object else None
         # Leftovers
         self._page_info = {}
-        for k, v in page_object:
-            self.page_info[k.lower()] = v
+        for k, v in page_object.items():
+            self._page_info[k.lower()] = v
 
     def resources(self):
         if isinstance(self._resources, tuple):
@@ -27,5 +26,12 @@ class Page:
 
     def get_info(self, key):
         return self._page_info.get(key.lower())
+
+    def toJSON(self):
+        return {
+            'resources': self._resources,
+            'content': self._contents,
+            'info': self._page_info
+        }
 
         

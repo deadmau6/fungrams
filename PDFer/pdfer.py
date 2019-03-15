@@ -1,5 +1,6 @@
 from .pdf_scanner import PdfScanner
 from .pdf_object import PDFObject
+from .pdf_base import PdfBase
 from pprint import pprint
 from time import time
 class PDFer:
@@ -38,6 +39,16 @@ class PDFer:
                 count += 1
         return location
 
+    def _start_base(self, args):
+        base = PdfBase(self.fname)
+        base.create_catalog()
+        base.add_fonts(1)
+        base.add_fonts(2)
+        print('\nFONTS:\n')
+        fonts = base.get_json('font')
+        pprint(list(fonts.keys()))
+        pprint(base.get_json('font', 'TT4'))
+
     def start(self, args):
         """This can effectively parse and access objects in a PDF."""
         if not args.file:
@@ -45,6 +56,11 @@ class PDFer:
             return
 
         self.fname = args.file
+
+        if args.base:
+            self._start_base(args)
+            return
+        
         start = self._pdf_startxref()
         #print(f"Start xref: {start}")
         if args.sect:
