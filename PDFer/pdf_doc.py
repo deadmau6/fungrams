@@ -1,6 +1,7 @@
 from .pdf_scanner import PdfScanner
 from .pdf_parser import PDFParser
 from .xref import XRef
+from .stream import Stream
 from pprint import pprint
 
 class PdfDoc:
@@ -38,7 +39,7 @@ class PdfDoc:
             return indirect['values'][0]
         return indirect['values']
 
-    def get_indirect_object(self, obj_number, search_stream=False):
+    def get_object(self, obj_number, search_stream=False):
         data = self.xref.get_object(obj_number)
 
         if not search_stream:
@@ -51,28 +52,11 @@ class PdfDoc:
         if m:
             match = m.groups()
             info = self._indirect_values(match[0] + match[2])
-            stream = self._raw_stream(info, match[1], decode_stream)
-            return info, stream
+            return Stream(info, match[1])
 
         return self._indirect_values(data)
 
-    def _parse_file_tail(self):
-        end_regex = re.compile(br'^%%EOF.*?', re.S)
-        with open(self.fname, 'rb') as f:
-            f.seek(self.xref_start, 0)
-            lines = f.read().splitlines()
-            ref_lines = []
-            for l in lines:
-                ref_lines.append(l)
-                if re.match(end_regex, l):
-                    break
-
-            ref_table = b'\n'.join(ref_lines)
-
-        xref, trailer = self.parser.parse(self.scanner.tokenize(str(ref_table, 'utf-8')))
-        if 'prev' in trailer:
-            self.xref_start = trailer['prev']
-            x_2, t_2 = self._parse_xref()
-            xref.update(x_2)
-            trailer.update(t_2)
-        return xref, trailer
+    def get_trailer(self, key=None):
+        if key:
+            return self.xref.trailer.get(key.lower())
+        return self.xref.trailer
