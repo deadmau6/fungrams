@@ -1,14 +1,20 @@
+from .pdf_scanner import PdfScanner
+from .pdf_parser import PDFParser
 
 class XRef:
     """Holds both the xref and trailer"""
 
     def __init__(self, start, fname):
         self.table = None
+        self.trailer = None
         self.xref_start = start
         self.fname = fname
 
-    def create_table(self, xref):
+    def create_table(self, xref=None):
         # self.table = { obj_number: (start_byte, end_byte) }
+        if xref is None:
+            xref, self.trailer = XRef._parse_file_tail(self.fname, self.xref_start)
+        
         sorted_addresses = sorted([v['byte_offset'] for k, v in xref.items()])
         
         for k, v in xref.items():
@@ -33,4 +39,34 @@ class XRef:
             data = f.read(end - start)
 
         return data
+    
+    @staticmethod
+    def _parse_file_tail(fname, xref_start):
         
+        pdf_parser = PDFParser()
+        pdf_scan = PdfScanner()
+
+        end_regex = re.compile(br'^%%EOF.*?', re.S)
+        
+        with open(fname, 'rb') as f:
+            f.seek(xref_start, 0)
+            lines = f.read().splitlines()
+            ref_lines = []
+
+            for l in lines:
+
+                ref_lines.append(l)
+                if re.match(end_regex, l):
+                    break
+
+            ref_table = b'\n'.join(ref_lines)
+
+        xref, trailer = pdf_parser.parse(pdf_scan.tokenize(str(ref_table, 'utf-8')))
+
+        if 'prev' in trailer:
+            xref_start = trailer['prev']
+            x_2, t_2 = XRef._parse_file_tail(fname, xref_start)
+            xref.update(x_2)
+            trailer.update(t_2)
+
+        return xref, trailer

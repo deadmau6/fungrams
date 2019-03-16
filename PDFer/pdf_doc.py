@@ -1,5 +1,6 @@
 from .pdf_scanner import PdfScanner
 from .pdf_parser import PDFParser
+from .xref import XRef
 from pprint import pprint
 
 class PdfDoc:
@@ -7,16 +8,14 @@ class PdfDoc:
     This access can be via the file or come from redis.
     """
     def __init__(self, fname):
+        #TODO: use redis to check for existing record
         self.scanner = PdfScanner()
         self.parser = PDFParser()
         self.fname = fname
-        #TODO: use redis to check for existing record
-        self.xref_start = self._startxref(start)
-        #TODO: make separate xref/trailer files.
-        self.xref_table, self.trailer = self._parse_file_tail()
-        self.sorted_addresses = sorted([v['byte_offset'] for k, v in self.xref_table.items()])
+        self.xref = XRef(self.fname, self._find_xref_start())
+        self.xref.create_table()
 
-    def _startxref(self):
+    def _find_xref_start(self):
         """This finds the starting byte address of the cross reference table in a PDF. 
         """
         location = None
@@ -33,11 +32,17 @@ class PdfDoc:
                 count += 1
         return location
 
-    def get_indirect_object(self, obj_number, search_stream=False, decode_stream=True):
-        data = self.get_raw_object(obj_number, more=True)
+    def _indirect_values(self, data):
+        indirect = self.parser.parse_indirect_object(self.scanner.tokenize(str(data, 'utf-8')))
+        if len(indirect['values']) == 1:
+            return indirect['values'][0]
+        return indirect['values']
+
+    def get_indirect_object(self, obj_number, search_stream=False):
+        data = self.xref.get_object(obj_number)
 
         if not search_stream:
-            return self.parser.parse_indirect_object(self.scanner.tokenize(str(data, 'utf-8')))
+            return self._indirect_values(data)
         
         stream_regex = re.compile(br'(.*stream[\r\n]+)(.*?)(endstream.*)', re.S)
         
@@ -45,65 +50,11 @@ class PdfDoc:
         
         if m:
             match = m.groups()
-            info = self.parser.parse_indirect_object(self.scanner.tokenize(str(match[0] + match[2], 'utf-8')))
-            stream = self._raw_stream(info['values'], match[1], decode_stream)
+            info = self._indirect_values(match[0] + match[2])
+            stream = self._raw_stream(info, match[1], decode_stream)
             return info, stream
 
-        return self.parser.parse_indirect_object(self.scanner.tokenize(str(data, 'utf-8')))
-
-    def get_raw_object(self, obj_number, more=False):
-        start = self.xref_table[obj_number]['byte_offset']
-        end = self._end(start)
-
-        with open(self.fname, 'rb') as f:
-            f.seek(start)
-            data = f.read(end - start)
-
-        if more:
-            return data
-        return str(data, 'utf-8')
-
-    def _raw_stream(self, stream_info, stream_data, decode_stream=True):
-        #Watch out for FFilters and FDecodeParms
-        decomp_typ = None
-        params = None
-        for item in stream_info:
-            if 'Filter' in item:
-                decomp_typ = item['Filter']
-                params = item.get('DecodeParms')
-                break
-        
-        if decomp_typ is None:
-            return stream_data
-
-        if decode_stream:
-            return self._decompress_stream(stream_data, decomp_typ, params).decode('utf-8')
-        
-        return self._decompress_stream(stream_data, decomp_typ, params)
-
-    def _decompress_stream(self, data, d_type, d_params):
-        if isinstance(d_type, list):
-            # There can be a compression pipeline
-            return None
-
-        decomp = d_type.lower()
-
-        if decomp == 'flatedecode':
-            if d_params:
-                return {
-                    'compression': 'filtered',
-                    'args': d_params,
-                    'data': zlib.decompress(data)
-                }
-            return zlib.decompress(data)
-
-        if decomp == 'dctdecode':
-            # For JPEGs only, DCT = Discrete Cosine Transform 
-            return {
-                'compression': 'dct',
-                'args': d_params,
-                'data': data
-            }
+        return self._indirect_values(data)
 
     def _parse_file_tail(self):
         end_regex = re.compile(br'^%%EOF.*?', re.S)

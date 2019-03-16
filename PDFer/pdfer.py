@@ -115,11 +115,6 @@ class PDFer:
                     pdf.display_image(args.save_image, obj_num, name)
 
         else:
-            start = time()
-            pdf.get_page_text(10)
-            pdf.get_page_images(10)
-            pdf.get_page_text(1)
-            end = time()
             print("XREF TABLE:\n")
             pprint(pdf.xref_table)
             print()
@@ -128,4 +123,3 @@ class PDFer:
             print()
             print("CATALOG:\n")
             pprint(pdf.create_catalog())
-            print(end-start)
