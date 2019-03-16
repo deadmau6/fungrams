@@ -35,6 +35,11 @@ class PdfBase:
                 continue
             self.fonts[k] = Font(self.document, self.document.get_object(v))
 
+    def get_page_text(self, page_number):
+        #TODO: make this a separate process/thread
+        self.add_fonts(page_number)
+        content_stream = self._get_page().content()
+
     def get_json(self, flag=None, args=None):
         if flag == 'catalog':
             return self.catalog.toJSON()

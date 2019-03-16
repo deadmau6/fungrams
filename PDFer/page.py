@@ -20,6 +20,7 @@ class Page:
         return self._resources
 
     def content(self):
+        # TODO: handle if contents is an array
         if self._contents:
             return self._document.get_object(self._contents, search_stream=True)
         return self._contents
