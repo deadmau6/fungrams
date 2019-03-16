@@ -1,7 +1,7 @@
 from .pdf_scanner import PdfScanner
 from .pdf_object import PDFObject
 from pprint import pprint
-
+from time import time
 class PDFer:
     """The PDFer is a general PDF parsing tool."""
 
@@ -107,13 +107,19 @@ class PDFer:
 
         elif args.view_image:
             obj_num = int(args.view_image[0], 10)
+
             if len(args.view_image) == 1:
-                pdf.display_image(obj_num)
+                pdf.display_image(args.save_image, obj_num)
             else:
                 for name in args.view_image[1:]:
-                    pdf.display_image(obj_num, name)
+                    pdf.display_image(args.save_image, obj_num, name)
 
         else:
+            start = time()
+            pdf.get_page_text(10)
+            pdf.get_page_images(10)
+            pdf.get_page_text(1)
+            end = time()
             print("XREF TABLE:\n")
             pprint(pdf.xref_table)
             print()
@@ -122,3 +128,4 @@ class PDFer:
             print()
             print("CATALOG:\n")
             pprint(pdf.create_catalog())
+            print(end-start)

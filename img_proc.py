@@ -20,7 +20,7 @@ def _draw_rectangle(image, x, y, w, h):
     c_image = _convert_color(image)
     return cv.rectangle(c_image, (x, y), (x+w, y+h), (0,255,0), 3)
 
-def _make_square(image, color=0):
+def _make_square(image, color=[255, 255, 255]):
     """Pad the image so that given any rotation, the entire image is visible.
     """
     rows, cols, channel = image.shape
@@ -334,7 +334,8 @@ def run(args):
     else:
         res = convolve(img)
 
-    cv.imshow('image', res)
+    res_view = cv.resize(res, None, fx=0.25, fy=0.25)
+    cv.imshow('image', res_view)
     cv.waitKey(0)
     cv.destroyAllWindows()
     if args.save:

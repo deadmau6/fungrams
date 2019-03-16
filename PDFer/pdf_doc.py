@@ -13,7 +13,7 @@ class PdfDoc:
         #TODO: use redis to check for existing record
         self.xref_start = self._startxref(start)
         #TODO: make separate xref/trailer files.
-        self.xref_table, self.trailer = self._parse_xref()
+        self.xref_table, self.trailer = self._parse_file_tail()
         self.sorted_addresses = sorted([v['byte_offset'] for k, v in self.xref_table.items()])
 
     def _startxref(self):
@@ -105,7 +105,7 @@ class PdfDoc:
                 'data': data
             }
 
-    def _parse_xref(self):
+    def _parse_file_tail(self):
         end_regex = re.compile(br'^%%EOF.*?', re.S)
         with open(self.fname, 'rb') as f:
             f.seek(self.xref_start, 0)
