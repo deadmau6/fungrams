@@ -1,6 +1,6 @@
 from .pdf_doc import PdfDoc
 from .catalog import Catalog
-from .font import Font
+from .font_table import FontTable
 from pprint import pprint
 
 class PdfBase:
@@ -8,7 +8,7 @@ class PdfBase:
     def __init__(self, file_name):
         self.document = PdfDoc(file_name)
         self.catalog = Catalog(self.document)
-        self.fonts = {}
+        self.fonts = FontTable()
         self.total_pages = 0
 
     def create_catalog(self):
@@ -25,20 +25,13 @@ class PdfBase:
             raise Exception(f"Page not found there are only {self.total_pages} pages.")
 
         resources = self._get_page(page_number).resources()
-        font = resources.get('Font')
-
-        if isinstance(font, tuple):
-            font = self.document.get_object(font)
-
-        for k, v in font.items():
-            if k in self.fonts:
-                continue
-            self.fonts[k] = Font(self.document, self.document.get_object(v))
+        self.fonts.add_font(resources.get('Font'))
 
     def get_page_text(self, page_number):
         #TODO: make this a separate process/thread
         self.add_fonts(page_number)
         content_stream = self._get_page().content()
+        return self.fonts.decode_content(content_stream)
 
     def get_json(self, flag=None, args=None):
         if flag == 'catalog':
@@ -46,7 +39,5 @@ class PdfBase:
         if flag == 'page':
             return self._get_page(args).toJSON()
         if flag == 'font':
-            if args and args in self.fonts:
-                return self.fonts[args].toJSON()
-            return {k: v.toJSON() for k, v in self.fonts.items()}
+            return self.fonts.toJSON(args)
         return self.document.toJSON()

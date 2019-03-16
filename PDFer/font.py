@@ -89,6 +89,48 @@ class Font:
         
         return char_map
 
+    def _remap(self, raw_text):
+        hx_arr = []
+        for x in raw_text:
+            try:
+                hx_arr.append(x.hex())
+            except Exception as e:
+                # x must be a string which means it's already a hex string.
+                hx_arr.append(x)
+
+        hex_string = ''.join(hx_arr)
+        text = []
+        for a, b in zip(hex_string[::2], hex_string[1::2]):
+            code = a+b
+            if code in self.cmap:
+                text.append(self.cmap[code])
+            else:
+                # user4369081 on stackoverflow
+                text.append(bytearray.fromhex(code).decode())
+
+        return text
+
+    def translate(self, raw_text):
+        if self.cmap is not None:
+            return ''.join(self._remap(raw_text))
+
+        if isinstance(self.encoding, tuple):
+            self.encoding = self._document.get_object(self.encoding)
+            f_encoding = self.encoding['BaseEncoding'].lower()
+        else:
+            f_encoding = self.encoding.lower()
+
+        if f_encoding.startswith('mac'):
+            return ''.join([str(text, 'mac_roman') for text in raw_text])
+        
+        if f_encoding.startswith('winansi'):
+            return ''.join([str(text, 'cp1252') for text in raw_text])
+
+        if f_encoding.startswith('standard'):
+            return ''.join([str(text, 'latin_1') for text in raw_text])
+
+        return ''.join([str(text, 'utf-8') for text in raw_text])
+
     def toJSON(self):
         return {
             'subtype': self.subtype,
