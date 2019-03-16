@@ -4,6 +4,7 @@ class Stream:
 
     def __init__(self, info, data):
         self.data = data
+        #Watch out for FFilters and FDecodeParms
         self.filter = info.get('Filter')
         self.f_params = info.get('DecodeParms')
 
@@ -33,12 +34,6 @@ class Stream:
 
     def decode(self):
         #Watch out for FFilters and FDecodeParms
-        for item in stream_info:
-            if 'Filter' in item:
-                decomp_typ = item['Filter']
-                params = item.get('DecodeParms')
-                break
-        
         if self.filter is None:
             return stream_data
 
@@ -49,4 +44,10 @@ class Stream:
             return self.decompress().decode('utf-8')
         
         return self.decompress()
-    
+
+    def get_data(self, decompress=False, decode=False):
+        if decode:
+            return self.decode()
+        if decompress:
+            return self.decompress()
+        return self.data

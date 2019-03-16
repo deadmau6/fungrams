@@ -94,6 +94,13 @@ def pdfer_flags(sub):
         default=False
         )
     pdfer_parser.add_argument(
+        '-b',
+        '--base',
+        action='store_true',
+        help='Test the pdf base.',
+        default=False
+        )
+    pdfer_parser.add_argument(
         '-t',
         '--tokens',
         action='store_true',
