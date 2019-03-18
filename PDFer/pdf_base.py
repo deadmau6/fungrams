@@ -8,7 +8,7 @@ class PdfBase:
     def __init__(self, file_name):
         self.document = PdfDoc(file_name)
         self.catalog = Catalog(self.document)
-        self.fonts = FontTable()
+        self.fonts = FontTable(self.document)
         self.total_pages = 0
 
     def create_catalog(self):
@@ -30,7 +30,7 @@ class PdfBase:
     def get_page_text(self, page_number):
         #TODO: make this a separate process/thread
         self.add_fonts(page_number)
-        content_stream = self._get_page().content()
+        content_stream = self._get_page(page_number).content()
         return self.fonts.decode_content(content_stream)
 
     def get_json(self, flag=None, args=None):

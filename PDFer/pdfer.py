@@ -45,9 +45,10 @@ class PDFer:
         base.add_fonts(1)
         base.add_fonts(2)
         print('\nFONTS:\n')
-        fonts = base.get_json('font')
-        pprint(list(fonts.keys()))
-        pprint(base.get_json('font', 'TT4'))
+        pprint(base.get_json('font'))
+        print('\nPAGE TEXT:\n')
+        print(base.get_page_text(1))
+        print(base.get_page_text(2))
 
     def start(self, args):
         """This can effectively parse and access objects in a PDF."""

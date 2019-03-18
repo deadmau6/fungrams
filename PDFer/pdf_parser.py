@@ -291,7 +291,7 @@ class PDFParser(RecursiveParser):
                     literal_bytes.append(val)
                 elif self.current.value == b'\\':
                     self.match(None)
-                    print(self.current.kind, self.current.value)
+                    #print(self.current.kind, self.current.value)
 
             else:
                 val = self.match(None)
