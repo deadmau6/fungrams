@@ -29,11 +29,11 @@ class PDFer:
         with open(self.fname, 'rb') as f:
             # TODO replace the arbitrary -200 with a guarenteed length.
             f.seek(-200, 2)
-            arch = f.readlines()
+            arch = f.read().splitlines()
         count = 0
         for x in arch[::-1]:
             if count == 1:
-                location = int(x[:-1], 10)
+                location = int(x, 10)
                 break
             else:
                 count += 1
@@ -62,7 +62,7 @@ class PDFer:
             return
         
         start = self._pdf_startxref()
-        #print(f"Start xref: {start}")
+        print(f"Start xref: {start}")
         if args.sect:
             print("SECTION:\n")
             pprint(self.read_section(*args.sect))
