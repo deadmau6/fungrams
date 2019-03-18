@@ -463,7 +463,6 @@ class PDFParser(RecursiveParser):
 
     def trailer(self):
         self.match('trailer')
-        #self.match('NEWLINE')
         self._skip_space()
         self.match('ARROW')
         trailer = self._dictionary_object()

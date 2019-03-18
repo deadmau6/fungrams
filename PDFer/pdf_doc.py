@@ -26,11 +26,11 @@ class PdfDoc:
         with open(self.fname, 'rb') as f:
             # TODO replace the arbitrary -200 with a guarenteed length.
             f.seek(-200, 2)
-            arch = f.readlines()
+            arch = f.read().splitlines()
         count = 0
         for x in arch[::-1]:
             if count == 1:
-                location = int(x[:-1], 10)
+                location = int(x, 10)
                 break
             else:
                 count += 1
