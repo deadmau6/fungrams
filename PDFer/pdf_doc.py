@@ -54,6 +54,7 @@ class PdfDoc:
             ref_table = b'\n'.join(ref_lines)
 
         xref, trailer = self.parser.parse(self.scanner.tokenize(str(ref_table, 'utf-8')))
+            
 
         if 'prev' in trailer:
             self._start = trailer['prev']
@@ -64,7 +65,7 @@ class PdfDoc:
         return xref, trailer
 
     def _indirect_values(self, data):
-        indirect = self.parser.parse_indirect_object(self.scanner.tokenize(str(data, 'utf-8')))
+        indirect = self.parser.parse_indirect_object(self.scanner.tokenize(str(data, 'utf-8', 'ignore')))
         if len(indirect['values']) == 1:
             return indirect['values'][0]
         return indirect['values']

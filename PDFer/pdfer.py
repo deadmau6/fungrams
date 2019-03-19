@@ -3,6 +3,8 @@ from .pdf_object import PDFObject
 from .pdf_base import PdfBase
 from pprint import pprint
 from time import time
+import cv2 as cv
+
 class PDFer:
     """The PDFer is a general PDF parsing tool."""
 
@@ -42,13 +44,18 @@ class PDFer:
     def _start_base(self, args):
         base = PdfBase(self.fname)
         base.create_catalog()
-        base.add_fonts(1)
-        base.add_fonts(2)
-        print('\nFONTS:\n')
-        pprint(base.get_json('font'))
-        print('\nPAGE TEXT:\n')
-        print(base.get_page_text(1))
-        print(base.get_page_text(2))
+        print('\nTEXT:\n')
+        pprint(base.get_page_text(3))
+        print('\nFONT:\n')
+        fonts = base.get_json('font')['fonts']
+        #for f in fonts:
+        #    pprint(base.get_json('font', f))
+        #images = base.get_page_images(1)
+        #iname, istream = images.popitem()
+        #cv.imshow(iname, istream.get_image())
+        #cv.waitKey(0)
+        #cv.destroyAllWindows()
+
 
     def start(self, args):
         """This can effectively parse and access objects in a PDF."""
