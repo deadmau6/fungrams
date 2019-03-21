@@ -454,8 +454,11 @@ class PDFObject:
         #res = self.parser.parse_content(self.scanner.b_tokenize(stream))
         #res = [t for t in self.scanner.b_tokenize(stream)]
         #pprint(res)
+        stream = None
+        if isinstance(x, tuple):
+            x, stream = x
         
-        return x
+        return x, stream
 
     def _decode_content(self, font, b_arr):
         if font in self.translation_table:

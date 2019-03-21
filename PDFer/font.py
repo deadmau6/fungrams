@@ -7,7 +7,6 @@ class Font:
     def __init__(self, pdfdoc, font_object):
         if font_object.pop('Type') != 'Font':
             raise Exception('Incorrect format, object is not a page.')
-
         self._document = pdfdoc
         # Required
         self.subtype = font_object.pop('Subtype')
@@ -18,6 +17,8 @@ class Font:
         self.widths = font_object.get('Widths')
         self.descriptor = font_object.get('FontDescriptor')
         self.encoding = font_object.get('Encoding', 'standard')
+        if isinstance(self.encoding, tuple):
+            self.encoding = self._document.get_object(self.encoding)
         # all of the keys will be hex strings and all the values will be readable characters.
         self.cmap = self._to_unicode_map(font_object.get('ToUnicode'))
 
@@ -114,10 +115,10 @@ class Font:
         if self.cmap is not None:
             return ''.join(self._remap(raw_text))
 
-        if isinstance(self.encoding, tuple):
-            self.encoding = self._document.get_object(self.encoding)
+        if isinstance(self.encoding, dict):
             f_encoding = self.encoding.get('BaseEncoding', 'standard').lower()
         else:
+            pprint(self.encoding)
             f_encoding = self.encoding.lower()
 
         if f_encoding.startswith('mac'):

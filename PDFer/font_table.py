@@ -43,5 +43,5 @@ class FontTable:
 
     def toJSON(self, font=None):
         if font and font in self.font_table:
-            return { [font]: self.font_table}
+            return { font: self.font_table[font].toJSON()}
         return {'fonts': [_ for _ in self.font_table.keys()]}
