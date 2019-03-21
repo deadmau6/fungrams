@@ -17,7 +17,7 @@ class Font:
         self.last_char = font_object.get('LastChar')
         self.widths = font_object.get('Widths')
         self.descriptor = font_object.get('FontDescriptor')
-        self.encoding = font_object.get('Encoding', 'CMap')
+        self.encoding = font_object.get('Encoding', 'standard')
         # all of the keys will be hex strings and all the values will be readable characters.
         self.cmap = self._to_unicode_map(font_object.get('ToUnicode'))
 
@@ -116,7 +116,7 @@ class Font:
 
         if isinstance(self.encoding, tuple):
             self.encoding = self._document.get_object(self.encoding)
-            f_encoding = self.encoding['BaseEncoding'].lower()
+            f_encoding = self.encoding.get('BaseEncoding', 'standard').lower()
         else:
             f_encoding = self.encoding.lower()
 

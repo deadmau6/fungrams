@@ -291,7 +291,7 @@ class PDFParser(RecursiveParser):
                     literal_bytes.append(val)
                 elif self.current.value == b'\\':
                     self.match(None)
-                    print(self.current.kind, self.current.value)
+                    #print(self.current.kind, self.current.value)
 
             else:
                 val = self.match(None)
@@ -463,7 +463,7 @@ class PDFParser(RecursiveParser):
 
     def trailer(self):
         self.match('trailer')
-        self.match('NEWLINE')
+        self._skip_space()
         self.match('ARROW')
         trailer = self._dictionary_object()
         return {k.lower(): v for k, v in trailer.items()}

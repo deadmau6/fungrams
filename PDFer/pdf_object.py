@@ -461,10 +461,10 @@ class PDFObject:
         if font in self.translation_table:
             return ''.join(self._remap(b_arr, font))
 
-        f_encoding = self.fonts[font]['Encoding']
+        f_encoding = self.fonts[font].get('Encoding', 'standard')
         if isinstance(f_encoding, tuple):
             fnts = self.get_indirect_object(f_encoding[0])['values'][0]
-            f_encoding = fnts['BaseEncoding']
+            f_encoding = fnts.get('BaseEncoding', 'standard')
 
         if f_encoding.startswith('mac'):
             return ''.join([str(text, 'mac_roman') for text in b_arr])

@@ -21,6 +21,8 @@ class Page:
 
     def content(self):
         # TODO: handle if contents is an array
+        if isinstance(self._contents, list) and len(self._contents) == 1:
+            return self._document.get_object(self._contents[0], search_stream=True)
         if self._contents:
             return self._document.get_object(self._contents, search_stream=True)
         return self._contents

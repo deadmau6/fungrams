@@ -29,11 +29,11 @@ class PDFer:
         with open(self.fname, 'rb') as f:
             # TODO replace the arbitrary -200 with a guarenteed length.
             f.seek(-200, 2)
-            arch = f.readlines()
+            arch = f.read().splitlines()
         count = 0
         for x in arch[::-1]:
             if count == 1:
-                location = int(x[:-1], 10)
+                location = int(x, 10)
                 break
             else:
                 count += 1
@@ -45,9 +45,10 @@ class PDFer:
         base.add_fonts(1)
         base.add_fonts(2)
         print('\nFONTS:\n')
-        fonts = base.get_json('font')
-        pprint(list(fonts.keys()))
-        pprint(base.get_json('font', 'TT4'))
+        pprint(base.get_json('font'))
+        print('\nPAGE TEXT:\n')
+        print(base.get_page_text(1))
+        print(base.get_page_text(2))
 
     def start(self, args):
         """This can effectively parse and access objects in a PDF."""
@@ -62,7 +63,7 @@ class PDFer:
             return
         
         start = self._pdf_startxref()
-        #print(f"Start xref: {start}")
+        print(f"Start xref: {start}")
         if args.sect:
             print("SECTION:\n")
             pprint(self.read_section(*args.sect))
