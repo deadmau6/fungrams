@@ -1,5 +1,5 @@
 from .filter_helper import FilterHelper
-import zlib
+import zlib, lzma
 
 class Stream:
 
@@ -23,6 +23,9 @@ class Stream:
         if self.filter == 'FlateDecode':
             # zlib.MAX_WBITS|32 should check header to see if it is gzip or zlib
             return zlib.decompress(self.data, zlib.MAX_WBITS|32)
+        elif self.filter == 'LZWDecode':
+            FilterHelper.lzw(self.data)
+            return self.data
         else:
             return self.data
 

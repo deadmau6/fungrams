@@ -1,3 +1,6 @@
+import numpy as np
+from pprint import pprint
+import math, io, zlib
 
 class FilterHelper:
     """Static methods to help reformat/unfilter compressed streams."""
@@ -122,3 +125,69 @@ class FilterHelper:
             return above
         else:
             return upper_left
+
+    @staticmethod
+    def lzw(data):
+        # Starts as 9 but ranges from 9-12.
+        bit_size = 9
+        
+        s = ''
+        index = 258
+        table = {}
+        
+        complete = []
+        output = io.BytesIO()
+
+        b_data = np.frombuffer(data, dtype=np.uint8)
+        #b_data.shape[0]
+        print(b_data.shape)
+        k = 0
+        for b in range(b_data.shape[0]):
+            k += 1
+            s += format(b_data[b], '0>8b')
+            if len(s) < bit_size * 2:
+                continue
+
+            curr = int(s[:bit_size], 2)
+            nxt = int(s[bit_size:bit_size*2], 2)
+            s = s[bit_size:]
+
+            if nxt == (2 ** bit_size) -1:
+                print(curr, nxt)
+                bit_size += 1
+            elif nxt == 257 or nxt == 256:
+                if curr >= 258:
+                    output.write(bytes(table[curr]))
+                else:
+                    output.write(bytes([curr]))
+            elif curr == 257:
+                #should be EOF?
+                break
+            elif curr == 256:
+                index = 258
+                bit_size = 9
+            elif curr >= 258:
+                #complete.extend(table[curr])
+                #print(table[curr])
+                output.write(bytes(table[curr]))
+                table[index] = table[curr].copy()
+                if nxt >= 258:
+                    a = table[nxt][0] if nxt in table else table[curr][0]
+                    table[index].append(a)
+                else:
+                    table[index].append(nxt)
+                index += 1
+            else:
+                #complete.append(chr(curr))
+                output.write(bytes([curr]))
+                if nxt >= 258:
+                    table[index] = [curr]
+                    table[index].extend(table[nxt])
+                else:
+                    table[index] = [curr, nxt]
+                index += 1
+        output.seek(0)
+        b_out =  output.read()
+        output.close()
+        print(k)
+        return b_out

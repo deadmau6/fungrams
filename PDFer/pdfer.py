@@ -45,7 +45,7 @@ class PDFer:
         base = PdfBase(self.fname)
         base.create_catalog()
         print('\nTEXT:\n')
-        pprint(base.get_page_text(3))
+        pprint(base.get_page_text(1))
         print('\nFONT:\n')
         fonts = base.get_json('font')['fonts']
         #for f in fonts:
