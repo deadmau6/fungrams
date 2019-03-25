@@ -111,9 +111,23 @@ class Font:
 
         return text
 
-    def translate(self, raw_text):
+    def translate(self, raw_text, enc_dict):
         if self.cmap is not None:
             return ''.join(self._remap(raw_text))
+
+        #text_array = [x for x in raw_text]
+        #print(self.base_font)
+
+        #Identify hexcodes and replace with dictionary definition
+        hex_start = str(r'\x')
+        for i, val in enumerate(raw_text):
+            if hex_start in str(val):
+                #get dict reference
+                hex = str(val)[4:6]
+                #get remaining string
+                extra = str(val)[6:-1]
+                raw_text[i] = str.encode(enc_dict[int(hex,16)] + extra)
+                print(raw_text[i])
 
         if isinstance(self.encoding, dict):
             f_encoding = self.encoding.get('BaseEncoding', 'standard').lower()
