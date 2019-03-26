@@ -127,7 +127,18 @@ class FilterHelper:
             return upper_left
 
     @staticmethod
-    def lzw(data):
+    def lzw(data, early_change=1):
+        """
+        (Source: PDF reference 1.7 Chapter 3, section 3, subsection 3 [3.3.3], Table 3.7)
+        EarlyChange: 
+
+        An indication of when to increase the code length.
+        If the value of this entry is 0, code length increases are postponed as long as possible.
+        If the value is 1, code length increases occur one code early.
+        This parameter is included because LZW sample code distributed by some vendors increases the code
+        length one code earlier than necessary.
+        Default value: 1.
+        """
         # Starts as 9 but ranges from 9-12.
         bit_size = 9
         
@@ -135,40 +146,50 @@ class FilterHelper:
         index = 258
         table = {}
         
-        complete = []
         output = io.BytesIO()
 
         b_data = np.frombuffer(data, dtype=np.uint8)
-        #b_data.shape[0]
-        print(b_data.shape)
-        k = 0
+        fin = []
+
         for b in range(b_data.shape[0]):
-            k += 1
             s += format(b_data[b], '0>8b')
+
             if len(s) < bit_size * 2:
                 continue
 
             curr = int(s[:bit_size], 2)
             nxt = int(s[bit_size:bit_size*2], 2)
+            if nxt == 441:
+                print(s, )
             s = s[bit_size:]
+            fin.append(curr)
 
-            if nxt == (2 ** bit_size) -1:
-                print(curr, nxt)
+            if nxt >= 4097:
+                raise Exception("Corrupt LZW Compression.")
+        
+            if nxt + early_change == (1 << bit_size):
+
                 bit_size += 1
             elif nxt == 257 or nxt == 256:
+
                 if curr >= 258:
                     output.write(bytes(table[curr]))
                 else:
                     output.write(bytes([curr]))
+            
             elif curr == 257:
+                #print(curr, nxt)
+
                 #should be EOF?
-                break
+                continue
             elif curr == 256:
+                #print(curr, nxt)
+
                 index = 258
                 bit_size = 9
+
             elif curr >= 258:
-                #complete.extend(table[curr])
-                #print(table[curr])
+
                 output.write(bytes(table[curr]))
                 table[index] = table[curr].copy()
                 if nxt >= 258:
@@ -178,7 +199,7 @@ class FilterHelper:
                     table[index].append(nxt)
                 index += 1
             else:
-                #complete.append(chr(curr))
+                # curr < 256
                 output.write(bytes([curr]))
                 if nxt >= 258:
                     table[index] = [curr]
@@ -186,8 +207,107 @@ class FilterHelper:
                 else:
                     table[index] = [curr, nxt]
                 index += 1
+
         output.seek(0)
         b_out =  output.read()
         output.close()
-        print(k)
-        return b_out
+        #print(b_out)
+        return fin
+
+    @staticmethod
+    def fuck_off(data, early_change=1):
+        output = io.BytesIO()
+
+        i_bits = 0
+        i_buf = 0
+        code = 0
+        prev_code = 0
+        nxt_size = 0
+
+        nxt_code = 258
+        nxt_bits = 9
+        s_index = 0
+        s_size = 0
+        first = True
+        eof = False
+
+        table = {}
+
+        k = 0
+        fin = []
+
+        while k < len(data):
+            while i_bits < nxt_bits:
+                if k >= len(data):
+                    eof = True
+                    break
+
+                c = data[k]
+                k += 1
+
+                i_buf = (i_buf << 8) | (c & 255)
+                i_bits += 8
+
+            code = (i_buf >> (i_bits - nxt_bits)) & ((1 << nxt_bits) - 1)
+            fin.append(code)
+            i_bits -= nxt_bits
+
+            if code == 257 or eof:
+                break
+            if code == 256:
+                nxt_code = 258
+                nxt_bits = 9
+                s_index = 0
+                s_size = 0
+                first = True
+                continue
+            if nxt_code >= 4097:
+                raise Exception("Corrupt LZW Compression.")
+
+            nxt_size = s_size + 1
+            if code < 256:
+                #sbuf[0] = code
+                output.write(bytes([code]))
+                nc = code
+                s_size = 1
+            elif code < nxt_code:
+                s_size = table[code]['length']
+                j = code
+                sbuf = [0] * s_size 
+                for i in range(s_size - 1, 0, -1):
+                    sbuf[i] = table[j]['tail']
+                    j = table[j]['head']
+                sbuf[0] = j
+                nc = j
+                output.write(bytes(sbuf))
+            elif code == nxt_code:
+                #sbuf[s_size] = nc
+                output.write(bytes([nc]))
+                s_size += 1
+            else:
+                raise Exception("Corrupt LZW Compression.")
+
+            #nc = sbuf[0]
+            if first:
+                first = False
+            else:
+                table[nxt_code] = {
+                    'length': nxt_size,
+                    'head': prev_code,
+                    'tail': nc
+                }
+                nxt_code += 1
+                if nxt_code + early_change == 512:
+                    nxt_bits = 10
+                elif nxt_code + early_change == 1024:
+                    nxt_bits = 11
+                elif nxt_code + early_change == 2048:
+                    nxt_bits = 12
+                prev_code = code
+                s_index = 0
+
+        output.seek(0)
+        b_out =  output.read()
+        output.close()
+        #print(b_out)
+        return fin

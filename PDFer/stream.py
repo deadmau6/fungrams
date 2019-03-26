@@ -1,5 +1,6 @@
 from .filter_helper import FilterHelper
 import zlib, lzma
+from pprint import pprint
 
 class Stream:
 
@@ -24,7 +25,15 @@ class Stream:
             # zlib.MAX_WBITS|32 should check header to see if it is gzip or zlib
             return zlib.decompress(self.data, zlib.MAX_WBITS|32)
         elif self.filter == 'LZWDecode':
-            FilterHelper.lzw(self.data)
+            a = FilterHelper.lzw(self.data)
+            b = FilterHelper.fuck_off(self.data)
+            i = 0
+            for x, y in zip(a, b):
+                if x != y:
+                    print(f"FOUL PLAY {i}: {x}, {y}")
+                    break
+                i += 1
+            print(a[254])
             return self.data
         else:
             return self.data
