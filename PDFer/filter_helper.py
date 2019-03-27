@@ -1,5 +1,3 @@
-import numpy as np
-from pprint import pprint
 import math, io, zlib
 
 class FilterHelper:
@@ -129,6 +127,10 @@ class FilterHelper:
     @staticmethod
     def lzw(data, early_change=1):
         """
+        Sources (this code is taken from these sources, I tried but this was faster):
+        * https://github.com/davidben/poppler/blob/master/poppler/Stream.cc
+        * https://github.com/davidben/poppler
+        
         (Source: PDF reference 1.7 Chapter 3, section 3, subsection 3 [3.3.3], Table 3.7)
         EarlyChange: 
 
@@ -139,175 +141,136 @@ class FilterHelper:
         length one code earlier than necessary.
         Default value: 1.
         """
-        # Starts as 9 but ranges from 9-12.
-        bit_size = 9
-        
-        s = ''
-        index = 258
-        table = {}
-        
         output = io.BytesIO()
 
-        b_data = np.frombuffer(data, dtype=np.uint8)
-        fin = []
+        # Keeps track of how many bits the buffer('buff') needs to generate the next code.
+        input_bits = 0
+        # One big number that represents the entire bit stream and is used to get the next code.
+        buff = 0
 
-        for b in range(b_data.shape[0]):
-            s += format(b_data[b], '0>8b')
-
-            if len(s) < bit_size * 2:
-                continue
-
-            curr = int(s[:bit_size], 2)
-            nxt = int(s[bit_size:bit_size*2], 2)
-            if nxt == 441:
-                print(s, )
-            s = s[bit_size:]
-            fin.append(curr)
-
-            if nxt >= 4097:
-                raise Exception("Corrupt LZW Compression.")
-        
-            if nxt + early_change == (1 << bit_size):
-
-                bit_size += 1
-            elif nxt == 257 or nxt == 256:
-
-                if curr >= 258:
-                    output.write(bytes(table[curr]))
-                else:
-                    output.write(bytes([curr]))
-            
-            elif curr == 257:
-                #print(curr, nxt)
-
-                #should be EOF?
-                continue
-            elif curr == 256:
-                #print(curr, nxt)
-
-                index = 258
-                bit_size = 9
-
-            elif curr >= 258:
-
-                output.write(bytes(table[curr]))
-                table[index] = table[curr].copy()
-                if nxt >= 258:
-                    a = table[nxt][0] if nxt in table else table[curr][0]
-                    table[index].append(a)
-                else:
-                    table[index].append(nxt)
-                index += 1
-            else:
-                # curr < 256
-                output.write(bytes([curr]))
-                if nxt >= 258:
-                    table[index] = [curr]
-                    table[index].extend(table[nxt])
-                else:
-                    table[index] = [curr, nxt]
-                index += 1
-
-        output.seek(0)
-        b_out =  output.read()
-        output.close()
-        #print(b_out)
-        return fin
-
-    @staticmethod
-    def fuck_off(data, early_change=1):
-        output = io.BytesIO()
-
-        i_bits = 0
-        i_buf = 0
         code = 0
         prev_code = 0
-        nxt_size = 0
+        # Length of the next table entry being inserted.
+        entry_size = 0
+        """The table is a dictionary that maps character codes above 258 to values under 256.
 
-        nxt_code = 258
-        nxt_bits = 9
-        s_index = 0
-        s_size = 0
-        first = True
-        eof = False
-
+        The table only keeps track of three numbers, the 'tail', 'head', and 'length'.
+        'tail' - must be a valid ascii value under 256.
+        'head' - can be either a valid ascii value under 256 or it can be another char code in the table.
+        'length' - the actual length of the LZW table entry.
+        Note: if lenght == 2: head <= 255 else: head >= 258.
+        (I initially tried creating table as a map of character codes to entry list's, but that became problematic.) 
+        """
         table = {}
+        # This is the table's index.
+        index = 258
+
+        # Number of bits that equal a valid code (ranges from 9 to 12 bits).
+        bit_size = 9
+        # Size of the current code entry that will be written to the output.
+        seq_size = 0
+        # used to ignore Clear Table Marker.
+        is_clear_marker = True
+        eof = False
+        new_code = 0
 
         k = 0
-        fin = []
 
         while k < len(data):
-            while i_bits < nxt_bits:
+            # Parse through the compressed bytes
+            while input_bits < bit_size:
+                # This loop essentially streams the bytes to bits. 
                 if k >= len(data):
                     eof = True
                     break
-
+                # grab the next compressed byte
                 c = data[k]
                 k += 1
+                # Adds the byte 'c' to the input buffer.  
+                buff = (buff << 8) | (c & 255)
+                # each byte is 8 bits
+                input_bits += 8
 
-                i_buf = (i_buf << 8) | (c & 255)
-                i_bits += 8
+            # This gets the last bits of size 'bit_size' and converts it to integer.
+            # This is the actual code that LZW uses in compression and decompression.
+            code = (buff >> (input_bits - bit_size)) & ((1 << bit_size) - 1)
 
-            code = (i_buf >> (i_bits - nxt_bits)) & ((1 << nxt_bits) - 1)
-            fin.append(code)
-            i_bits -= nxt_bits
+            # push the 'in_bits' back
+            input_bits -= bit_size
 
+            # End of Data Decompression
             if code == 257 or eof:
                 break
+            # Clear Table Marker
             if code == 256:
-                nxt_code = 258
-                nxt_bits = 9
-                s_index = 0
-                s_size = 0
-                first = True
+                # This resets the table creation process, It Does Not mean deleting the whole table.
+                # It is more like a restart, 'Clear Table' is a little misleading.
+                index = 258
+                bit_size = 9
+                seq_size = 0
+                # We don't want to add clear table markers to the table.
+                is_clear_marker = True
                 continue
-            if nxt_code >= 4097:
+            # If this is True then the 'table' has overflowed.
+            if index >= 4097:
                 raise Exception("Corrupt LZW Compression.")
 
-            nxt_size = s_size + 1
+            entry_size = seq_size + 1
+            # Code is in [0,..,255] then it is valid acsii value.
             if code < 256:
-                #sbuf[0] = code
+                # This is the first appearence of this code so it is directly written out. 
                 output.write(bytes([code]))
-                nc = code
-                s_size = 1
-            elif code < nxt_code:
-                s_size = table[code]['length']
+                new_code = code
+                seq_size = 1
+
+            # This means that the 'code' is a valid entry in the table.
+            elif code < index:
+                # 's_size' keeps track of how long the "true" table entry is.
+                # This is needed because of the table's structure.(see the comment above 'table' to understand the structure)
+                seq_size = table[code]['length']
                 j = code
-                sbuf = [0] * s_size 
-                for i in range(s_size - 1, 0, -1):
+                # 'sbuf' is the "true" table entry and is a list of valid codes to be written out.
+                sbuf = [0] * seq_size
+                # fill the 'sbuf'
+                for i in range(seq_size - 1, 0, -1):
                     sbuf[i] = table[j]['tail']
+                    # j recurses throught the table
                     j = table[j]['head']
+
+                # add the final head code
                 sbuf[0] = j
-                nc = j
+                new_code = j
                 output.write(bytes(sbuf))
-            elif code == nxt_code:
-                #sbuf[s_size] = nc
-                output.write(bytes([nc]))
-                s_size += 1
+
+            # This special/rare case means that the head of the last table entry is appended to the tail of this entry.
+            elif code == index:
+                output.write(bytes([new_code]))
+                seq_size += 1
             else:
                 raise Exception("Corrupt LZW Compression.")
 
-            #nc = sbuf[0]
-            if first:
-                first = False
+            if is_clear_marker:
+                is_clear_marker = False
             else:
-                table[nxt_code] = {
-                    'length': nxt_size,
+                table[index] = {
+                    'length': entry_size,
                     'head': prev_code,
-                    'tail': nc
+                    'tail': new_code
                 }
-                nxt_code += 1
-                if nxt_code + early_change == 512:
-                    nxt_bits = 10
-                elif nxt_code + early_change == 1024:
-                    nxt_bits = 11
-                elif nxt_code + early_change == 2048:
-                    nxt_bits = 12
-                prev_code = code
-                s_index = 0
+
+                index += 1
+                
+                if index + early_change == 512:
+                    bit_size = 10
+                elif index + early_change == 1024:
+                    bit_size = 11
+                elif index + early_change == 2048:
+                    bit_size = 12
+            
+            prev_code = code
 
         output.seek(0)
         b_out =  output.read()
         output.close()
-        #print(b_out)
-        return fin
+        return b_out
+    
