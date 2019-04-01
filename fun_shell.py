@@ -2,6 +2,7 @@ from DP import Dynamic
 from Things import Things
 from Funpiler import Funpiler
 from PDFer import PDFer
+from ImageProcessing import ImageController
 import argparse
 
 def dp_flags(sub):
@@ -188,6 +189,34 @@ def pdfer_flags(sub):
         )
     pdfer_parser.set_defaults(func=pdfer.start)
 
+def impro_flags(sub):
+    impro = ImageController()
+    impro_parser = sub.add_parser("impro", help=ImageController.start.__doc__)
+
+    impro_parser.add_argument(
+        '-f',
+        '--file',
+        type=str,
+        help='Image File location.',
+        default=False
+        )
+    impro_parser.add_argument(
+        '-p',
+        '--operations',
+        nargs='+',
+        help='List of operation objects to preform on the image.',
+        default=False
+        )
+    impro_parser.add_argument(
+        '-H',
+        '--histogram',
+        action='store_true',
+        help='Plot the histogram of the image.',
+        default=False
+        )
+    
+    impro_parser.set_defaults(func=impro.start)
+
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
     # Create subparsers for applications.
@@ -196,6 +225,7 @@ def create_flags():
     things_flags(sub)
     funpiler_flags(sub)
     pdfer_flags(sub)
+    impro_flags(sub)
     return p
 
 if __name__ == '__main__':
