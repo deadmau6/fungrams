@@ -1,6 +1,7 @@
 from .pdf_scanner import PdfScanner
 from .pdf_parser import PDFParser
 from pprint import pprint
+from adobe_glyph_dict import glyph_dict
 
 class Font:
 
@@ -115,36 +116,48 @@ class Font:
         if self.cmap is not None:
             return ''.join(self._remap(raw_text))
 
-        #text_array = [x for x in raw_text]
-        #print(self.base_font)
-
         #Identify hexcodes and replace with dictionary definition
         hex_start = str(r'\x')
+        oct_start = str(r'\\')
         for i, val in enumerate(raw_text):
-            if hex_start in str(val):
-                #get dict reference
-                hex = str(val)[4:6]
-                #get remaining string
-                extra = str(val)[6:-1]
-                raw_text[i] = str.encode(enc_dict[int(hex,16)] + extra)
-                print(raw_text[i])
+            if (hex_start in str(val) or oct_start in str(val)) and enc_dict:
+                raw_text[i] = self.read_enc_bytes(val, enc_dict)
 
         if isinstance(self.encoding, dict):
             f_encoding = self.encoding.get('BaseEncoding', 'standard').lower()
         else:
             pprint(self.encoding)
             f_encoding = self.encoding.lower()
-
+            
         if f_encoding.startswith('mac'):
-            return ''.join([str(text, 'mac_roman') for text in raw_text])
+            return ''.join([str(text, 'mac_roman') if type(text) == type(bytes()) else text for text in raw_text])
         
         if f_encoding.startswith('winansi'):
-            return ''.join([str(text, 'cp1252') for text in raw_text])
+            return ''.join([str(text, 'cp1252') if type(text) == type(bytes()) else text for text in raw_text])
 
         if f_encoding.startswith('standard'):
-            return ''.join([str(text, 'latin_1') for text in raw_text])
+            return ''.join([str(text, 'latin_1') if type(text) == type(bytes()) else text for text in raw_text])
 
-        return ''.join([str(text, 'utf-8') for text in raw_text])
+        return ''.join([str(text, 'utf-8') if type(text) == type(bytes()) else text for text in raw_text])
+
+    def read_enc_bytes(self, text, enc_dict):
+        oct = False
+        hex = False
+        new_string = ''
+        for b in text:
+            if (oct):
+                oct = False
+                if(len(text) > 2):
+                    char = chr(int(str(b)[2:5], 8))
+                    new_string += char
+            elif ((r'\\') in str(b)):
+                oct = True
+            elif ((r'\x') in str(b)):
+                char = chr(int(glyph_dict[enc_dict[int(str(b)[4:-1], 16)]], 16))
+                new_string += char
+            else:
+                new_string += str(b)[2:-1]
+        return (new_string)
 
     def toJSON(self):
         return {

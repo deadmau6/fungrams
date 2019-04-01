@@ -1,4 +1,4 @@
-import re, collections
+import re, collections, codecs
 
 Token = collections.namedtuple('Token', ['kind', 'value', 'line', 'column'])
 
@@ -34,7 +34,7 @@ class PdfScanner:
             'begincodespacerange'
         }
         self.patterns = [
-            ('NUMBER', r'\d+(\.\d*)?'),
+            ('NUMBER', r'\d+(\.\d+)?'),
             ('OPR', r'[/+\-*]'),
             ('COLON', r':'),
             ('ASSIGN', r'='),

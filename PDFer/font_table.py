@@ -29,29 +29,29 @@ class FontTable:
     def decode_content(self, content_stream):
         parser = PDFParser()
         scanner = PdfScanner()
-
         # text_stream = { font_name: ['text', 'found', ... ] }
         text_stream = parser.parse_content(scanner.b_tokenize(content_stream.decompress()))
-        print(self.get_font(text_stream[0][0]).toJSON())
-        diff_table = (self.get_font(text_stream[0][0]).toJSON())['encoding']['Differences']
-
-        #Translate to dictionary
         enc_dict = {}
-        new_key = None
-        curr_key = 0
+        try:
+            diff_table = (self.get_font(text_stream[0][0]).toJSON())['encoding']['Differences']
+            #Translate to dictionary
+            new_key = None
+            curr_key = 0
 
-        for enc in diff_table:
-            try: 
-                int(enc)
-                new_key = enc
-            except: 
-                if new_key and enc != '.notdef':
-                    enc_dict.update({new_key: enc})
-                    curr_key = new_key
-                elif enc != '.notdef':
-                    enc_dict.update({curr_key: enc})
-                new_key = None
-                curr_key += 1
+            for enc in diff_table:
+                try: 
+                    int(enc)
+                    new_key = enc
+                except: 
+                    if new_key and enc != '.notdef':
+                        enc_dict.update({new_key: enc})
+                        curr_key = new_key
+                    elif enc != '.notdef':
+                        enc_dict.update({curr_key: enc})
+                    new_key = None
+                    curr_key += 1
+        except:
+            pass
 
         text_arr = []
         
