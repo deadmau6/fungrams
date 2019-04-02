@@ -1,4 +1,4 @@
-import re, collections, codecs
+import re, collections
 
 Token = collections.namedtuple('Token', ['kind', 'value', 'line', 'column'])
 

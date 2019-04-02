@@ -9,10 +9,10 @@ class FontTable:
         self._document = pdfdoc
         self.font_table = {}
 
-    def _decode_text(self, font_name, raw_text, enc_dict):
+    def _decode_text(self, font_name, raw_text):
         try:
             font = self.font_table[font_name]
-            return font.translate(raw_text, enc_dict)
+            return font.translate(raw_text, self.get_font(font_name))
         except KeyError:
             raise Exception('Font does not exist?')
 
@@ -31,33 +31,12 @@ class FontTable:
         scanner = PdfScanner()
         # text_stream = { font_name: ['text', 'found', ... ] }
         text_stream = parser.parse_content(scanner.b_tokenize(content_stream.decompress()))
-        enc_dict = {}
-        try:
-            diff_table = (self.get_font(text_stream[0][0]).toJSON())['encoding']['Differences']
-            #Translate to dictionary
-            new_key = None
-            curr_key = 0
-
-            for enc in diff_table:
-                try: 
-                    int(enc)
-                    new_key = enc
-                except: 
-                    if new_key and enc != '.notdef':
-                        enc_dict.update({new_key: enc})
-                        curr_key = new_key
-                    elif enc != '.notdef':
-                        enc_dict.update({curr_key: enc})
-                    new_key = None
-                    curr_key += 1
-        except:
-            pass
 
         text_arr = []
         
         for entry in text_stream:
             font_name, raw_text = entry
-            text_arr.append(self._decode_text(font_name, raw_text, enc_dict))
+            text_arr.append(self._decode_text(font_name, raw_text))
         
         return text_arr
 

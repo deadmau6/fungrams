@@ -112,7 +112,34 @@ class Font:
 
         return text
 
-    def translate(self, raw_text, enc_dict):
+    def get_diff_table(self, font):
+        enc_dict = {}
+        #print(font.toJSON())
+        #diff_table = (font.toJSON())['encoding']['Differences']
+        try:
+            diff_table = (font.toJSON())['encoding']['Differences']
+            #Translate to dictionary
+            new_key = None
+            curr_key = 0
+
+            for enc in diff_table:
+                try: 
+                    int(enc)
+                    new_key = enc
+                except: 
+                    if new_key and enc != '.notdef':
+                        enc_dict.update({new_key: enc})
+                        curr_key = new_key
+                    elif enc != '.notdef':
+                        enc_dict.update({curr_key: enc})
+                    new_key = None
+                    curr_key += 1
+        except:
+            pass
+        return enc_dict
+
+    def translate(self, raw_text, font):
+        enc_dict = self.get_diff_table(font)
         if self.cmap is not None:
             return ''.join(self._remap(raw_text))
 
@@ -120,8 +147,12 @@ class Font:
         hex_start = str(r'\x')
         oct_start = str(r'\\')
         for i, val in enumerate(raw_text):
-            if (hex_start in str(val) or oct_start in str(val)) and enc_dict:
-                raw_text[i] = self.read_enc_bytes(val, enc_dict)
+            if (hex_start in str(val) or oct_start in str(val)):
+                #If a dictionary exists, translate, otherwise remove the reference
+                if(enc_dict):
+                    raw_text[i] = self.read_enc_bytes(val, enc_dict)
+                else:
+                    raw_text[i] = ''
 
         if isinstance(self.encoding, dict):
             f_encoding = self.encoding.get('BaseEncoding', 'standard').lower()
@@ -130,20 +161,21 @@ class Font:
             f_encoding = self.encoding.lower()
             
         if f_encoding.startswith('mac'):
-            return ''.join([str(text, 'mac_roman') if type(text) == type(bytes()) else text for text in raw_text])
+            return ''.join([str(text, 'mac_roman') if isinstance(text, bytes) else text for text in raw_text])
         
         if f_encoding.startswith('winansi'):
-            return ''.join([str(text, 'cp1252') if type(text) == type(bytes()) else text for text in raw_text])
+            return ''.join([str(text, 'cp1252') if isinstance(text, bytes) else text for text in raw_text])
 
         if f_encoding.startswith('standard'):
-            return ''.join([str(text, 'latin_1') if type(text) == type(bytes()) else text for text in raw_text])
+            return ''.join([str(text, 'latin_1') if isinstance(text, bytes) else text for text in raw_text])
 
-        return ''.join([str(text, 'utf-8') if type(text) == type(bytes()) else text for text in raw_text])
+        return ''.join([str(text, 'utf-8') if isinstance(text, bytes) else text for text in raw_text])
 
     def read_enc_bytes(self, text, enc_dict):
         oct = False
         hex = False
         new_string = ''
+        #Scan text for hex or octal delimiter, construct new text with translated character
         for b in text:
             if (oct):
                 oct = False

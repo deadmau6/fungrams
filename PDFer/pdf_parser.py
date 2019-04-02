@@ -270,17 +270,6 @@ class PDFParser(RecursiveParser):
 
         return d_obj
 
-    def _byte_character_code(self):
-        code = self.match('NUMBER')
-        count = 3
-        while self.current.kind == 'NUMBER':
-            count -= 1
-            code.append(self.match('NUMBER'))
-            if count == 0:
-                code.insert(0, '\\')
-                break
-        return code
-
     def _literal_byte_string(self):
         self.match('PAREN', '(')
         paren_count = 1
