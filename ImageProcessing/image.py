@@ -81,6 +81,8 @@ class Image:
             return self.operator.mask(img, args.get('x'), args.get('y'), args.get('w'), args.get('h'))
         if opr == 'contours':
             return self.operator.contours(img)
+        if opr == 'canny':
+            return self.operator.canny(img, **args)
         return None
 
     def do_operations(self, opr_list):
@@ -104,9 +106,16 @@ class Image:
                 self.info[opr] = self._perform_operation(opr, args)
         return True
 
-    def show(self):
+    def show(self, rsize=None, fsize=None):
         """Simply displays the current image data."""
-        cv.imshow('image', self.data)
+        if rsize:
+            image = cv.resize(self.data, resize)
+            cv.imshow('image', image)
+        elif fsize:
+            image = cv.resize(self.data, None, fx=fsize, fy=fsize)
+            cv.imshow('image', image)
+        else:
+            cv.imshow('image', self.data)
         cv.waitKey(0)
         cv.destroyAllWindows()
 
@@ -122,9 +131,16 @@ class Image:
     def plot(self):
         if self.histogram is None:
             plt.hist(self.data.ravel(), 256, [0,256])
-        else:
+        elif isinstance(self.histogram, dict):
             plt.subplot(211)
             plt.imshow(self.data)
+            plt.subplot(212)
+            for k,v in self.histogram.items():
+                plt.plot(v, color=k)
+            plt.xlim([0,256])
+        else:
+            plt.subplot(211)
+            plt.imshow(self.data, 'gray')
             plt.subplot(212)
             plt.plot(self.histogram)
             plt.xlim([0,256])

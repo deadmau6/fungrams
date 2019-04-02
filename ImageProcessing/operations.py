@@ -1,5 +1,6 @@
 import numpy as np
 import cv2 as cv
+from pprint import pprint
 
 class ImageOperations:
 
@@ -32,12 +33,23 @@ class ImageOperations:
 
     def contours(self, image):
         """Contours are still a relatively new feature to this module and are still under development.
-        The only issue is that the input image must be grayscale.
+        The only issue is that the input image must be binary.
         """
-        thresh = ImageOperations.otsu_binarization(image)
-        im, cnts, h = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        im, cnts, h = cv.findContours(image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         color_img = self.convert_color(image, cv.COLOR_GRAY2RGB)
+        x, y, w, h = cv.boundingRect(cnts[137])
+        color_img = cv.rectangle(color_img, (x,y), (x+w,y+h), (0,0,255), 2)
         return cv.drawContours(color_img, cnts, -1, (0,255,0), 2)
+
+    def canny(self, image, minval=100, maxval=200, aperature_size=3, L2gradient=True):
+        """The four values that are used to compute the Canny edge detection are:
+        * minval = the lower threshold  to ignore an edge.
+        * maxval = the upper threshold which accepts an edge
+        * aperature_size = the size of the Sobel Kernal
+        * L2gradient = specifies which gradient function is used (if True the more accurate function is used)
+        Also the input image should be in grayscale.
+        """
+        return cv.Canny(image, minval, maxval, aperature_size, L2gradient=L2gradient)
 
     def find_skew_angle(self, image):
         """This returns the correction angle for a skewed image.
@@ -60,6 +72,12 @@ class ImageOperations:
         """
         #TODO: have a third method option that will auto select an optimal method
         if method == 'opencv':
+            if kwargs.get('plot'):
+                color_plot = kwargs.pop('plot')
+                hst = {}
+                for i,col in enumerate(color_plot): 
+                    hst[col] = ImageOperations.cv_histogram(image, channel=i, **kwargs)
+                return hst
             return ImageOperations.cv_histogram(image, **kwargs)
         if method == 'bincount':
             return ImageOperations.numpy_bincount(image.ravel(), **kwargs)
@@ -69,9 +87,9 @@ class ImageOperations:
         return ImageOperations.cv_histogram(image, **kwargs)
 
     @staticmethod
-    def cv_histogram(image, channels=0, mask=None, size=256, r=[0,256]):
+    def cv_histogram(image, channel=0, mask=None, size=256, r=[0,256]):
         # channels determines the color depth
-        return cv.calcHist([image], [channels], mask, [size], r)
+        return cv.calcHist([image], [channel], mask, [size], r)
 
     @staticmethod
     def numpy_bincount(image, weights=None, minlength=256):
@@ -128,7 +146,7 @@ class ImageOperations:
         return cv.GaussianBlur(image, ksize, x, y)
 
     @staticmethod
-    def median_blur(image, ksize=(5,5)):
+    def median_blur(image, ksize=5):
         """Computes the median of all the pixels in the given kernal size.
         The kernal size must be a single number, positive, and odd.
 
