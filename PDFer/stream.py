@@ -1,6 +1,5 @@
 from .filter_helper import FilterHelper
-import zlib, lzma
-from pprint import pprint
+import zlib
 
 class Stream:
 
