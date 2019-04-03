@@ -339,16 +339,18 @@ class PDFParser(RecursiveParser):
 
     def _content_stream(self):
         text = []
+        last_font = 'other'
         while self.current != None:
             if self.current.kind == 'BT':
-                text.append(self._find_text())
+                text.append(self._find_text(last_font))
+                last_font = text[-1][0]
             else:
                 self.match(None)
         return text
 
-    def _find_text(self):
+    def _find_text(self, prev_font='other'):
         self.match('BT')
-        font = 'other'
+        font = prev_font
         b_text = []
         while self.current.kind != 'ET':
             if self.current.kind == 'PAREN':

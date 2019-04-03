@@ -23,6 +23,8 @@ class Stream:
         if self.filter == 'FlateDecode':
             # zlib.MAX_WBITS|32 should check header to see if it is gzip or zlib
             return zlib.decompress(self.data, zlib.MAX_WBITS|32)
+        elif self.filter == 'LZWDecode':
+            return FilterHelper.lzw(self.data)
         else:
             return self.data
 

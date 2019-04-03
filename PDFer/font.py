@@ -118,7 +118,6 @@ class Font:
         if isinstance(self.encoding, dict):
             f_encoding = self.encoding.get('BaseEncoding', 'standard').lower()
         else:
-            pprint(self.encoding)
             f_encoding = self.encoding.lower()
 
         if f_encoding.startswith('mac'):
