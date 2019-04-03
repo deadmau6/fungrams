@@ -12,7 +12,7 @@ class FontTable:
     def _decode_text(self, font_name, raw_text):
         try:
             font = self.font_table[font_name]
-            return font.translate(raw_text)
+            return font.translate(raw_text, self.get_font(font_name))
         except KeyError:
             raise Exception('Font does not exist?')
 
@@ -29,7 +29,6 @@ class FontTable:
     def decode_content(self, content_stream):
         parser = PDFParser()
         scanner = PdfScanner()
-
         # text_stream = { font_name: ['text', 'found', ... ] }
         text_stream = parser.parse_content(scanner.b_tokenize(content_stream.decompress()))
 
@@ -45,3 +44,6 @@ class FontTable:
         if font and font in self.font_table:
             return { font: self.font_table[font].toJSON()}
         return {'fonts': [_ for _ in self.font_table.keys()]}
+
+    def get_font(self, font):
+        return self.font_table.get(font)

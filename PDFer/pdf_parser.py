@@ -1,5 +1,6 @@
 from .recursive_parser import RecursiveParser
 from pprint import pprint
+from adobe_glyph_dict import glyph_dict
 
 class PDFParser(RecursiveParser):
 
@@ -274,7 +275,6 @@ class PDFParser(RecursiveParser):
         paren_count = 1
         literal_bytes = []
         while paren_count != 0:
-            
             if self.current.kind == 'PAREN':
                 val = self.match('PAREN')
                 if val == '(':
@@ -291,13 +291,22 @@ class PDFParser(RecursiveParser):
                     literal_bytes.append(val)
                 elif self.current.value == b'\\':
                     self.match(None)
-                    #print(self.current.kind, self.current.value)
-
+                elif self.current.kind == 'NUMBER':
+                    code = self.match('NUMBER')
+                    if len(code) == 3:
+                        literal_bytes.extend([b'\\', code])
+                    else:
+                        literal_bytes.append(code)
             else:
                 val = self.match(None)
                 if not isinstance(val, bytes):
                     val = bytes(val, 'utf-8')
                 literal_bytes.append(val)
+
+        if(len(literal_bytes) > 1):
+            for i in literal_bytes:
+                if (str(r'\x') in str(i) or str(r'\\') in str(i)):
+                    return literal_bytes
 
         return b''.join(literal_bytes)
 
