@@ -192,6 +192,7 @@ def pdfer_flags(sub):
 def impro_flags(sub):
     impro = ImageController()
     impro_parser = sub.add_parser("impro", help=ImageController.start.__doc__)
+    impro_tools = impro_parser.add_mutually_exclusive_group()
 
     impro_parser.add_argument(
         '-f',
@@ -208,20 +209,33 @@ def impro_flags(sub):
         default=False
         )
     impro_parser.add_argument(
+        '-d',
+        '--ocr-data',
+        action='store_true',
+        help='Print out the complete data from the ocr process.',
+        default=False
+        )
+    impro_tools.add_argument(
         '-H',
         '--histogram',
         action='store_true',
         help='Plot the histogram of the image.',
         default=False
         )
-    impro_parser.add_argument(
+    impro_tools.add_argument(
+        '-o',
+        '--ocr',
+        action='store_true',
+        help='OCR the image and print out the text.',
+        default=False
+        )
+    impro_tools.add_argument(
         '-r',
         '--resize',
         type=str,
         help='Resize the image to be displayed.',
         default=False
         )
-    
     impro_parser.set_defaults(func=impro.start)
 
 def create_flags():

@@ -103,6 +103,10 @@ class ImageController:
         if args.operations:
             ops =[self._operation_object(opr_string) for opr_string in args.operations]
             image.do_operations(ops)
+        
+        if args.ocr_data:
+            pprint(image.get_ocr_data())
+
         if args.histogram:
             image.plot()
         elif args.resize:
@@ -111,6 +115,8 @@ class ImageController:
                 image.show(rsize=val)
             else:
                 image.show(fsize=val)
+        elif args.ocr:
+            print(image.ocr())
         else:
             image.show()
         
