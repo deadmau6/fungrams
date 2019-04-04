@@ -10,6 +10,7 @@ class ImageController:
     def __init__(self):
         self.opr_re = re.compile(r'(?P<opr>\w+)\((?P<args>[\[\]\(\){}\s\w,=:\"\']*)\)')
         self.int_re = re.compile(r'\d+')
+        self.float_re = re.compile(r'\d+\.\d+')
         self.tuple_re = re.compile(r'\([\w,]+\)')
         self.list_re = re.compile(r'\[[\w,]+\]')
         self.obj_re = re.compile(r'{[\w:,]*}')
@@ -18,6 +19,8 @@ class ImageController:
         return cv.imread(fname, cv.IMREAD_UNCHANGED)
 
     def _value_check(self, value):
+        if re.match(self.float_re, value):
+            return float(value)
         if re.match(self.int_re, value):
             return int(value, 10)
         if re.match(self.tuple_re, value):
@@ -88,6 +91,8 @@ class ImageController:
             # check color grayscale
         if opr == 'contours':
             return 'image', opr, args
+        if opr == 'canny':
+            return 'image', opr, args
 
     def start(self, args):
         """Run image processing operations from the command line."""
@@ -100,6 +105,12 @@ class ImageController:
             image.do_operations(ops)
         if args.histogram:
             image.plot()
+        elif args.resize:
+            val = self._value_check(args.resize)
+            if isinstance(val, tuple):
+                image.show(rsize=val)
+            else:
+                image.show(fsize=val)
         else:
             image.show()
         

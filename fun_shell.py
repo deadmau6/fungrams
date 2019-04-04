@@ -214,6 +214,13 @@ def impro_flags(sub):
         help='Plot the histogram of the image.',
         default=False
         )
+    impro_parser.add_argument(
+        '-r',
+        '--resize',
+        type=str,
+        help='Resize the image to be displayed.',
+        default=False
+        )
     
     impro_parser.set_defaults(func=impro.start)
 
