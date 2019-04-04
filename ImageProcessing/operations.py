@@ -31,15 +31,36 @@ class ImageOperations:
         mask[y:(y+h), x:(x+w)] = 255
         return mask, cv.bitwise_and(image, image, mask=mask)
 
-    def contours(self, image):
+    def contours(self, image, method='draw_all', approx=True, retr_mode='tree', **kwargs):
         """Contours are still a relatively new feature to this module and are still under development.
         The only issue is that the input image must be binary.
         """
-        im, cnts, h = cv.findContours(image, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        chain_approx = cv.CHAIN_APPROX_SIMPLE if approx else cv.CHAIN_APPROX_NONE
+        if retr_mode == 'tree':
+            retr = cv.RETR_TREE
+        elif retr_mode == 'list':
+            retr = cv.RETR_LIST
+        elif retr_mode == 'external':
+            retr = cv.RETR_EXTERNAL
+        elif retr_mode == 'ccomp':
+            retr = cv.RETR_CCOMP
+        else:
+            retr = cv.RETR_TREE
+        
+        im, cntrs, hierarchy = cv.findContours(image, retr, chain_approx)
         color_img = self.convert_color(image, cv.COLOR_GRAY2RGB)
-        x, y, w, h = cv.boundingRect(cnts[137])
-        color_img = cv.rectangle(color_img, (x,y), (x+w,y+h), (0,0,255), 2)
-        return cv.drawContours(color_img, cnts, -1, (0,255,0), 2)
+        cnt_index = kwargs.get('contour', 0)
+        if method == 'draw_all':
+            return cv.drawContours(color_img, cntrs, -1, kwargs.get('color', (0,255,0)), kwargs.get('width', 2))
+        if method == 'bounding_rect':
+            x, y, w, h = cv.boundingRect(cntrs[cnt_index])
+            return ImageOperations.draw_rectangle(color_img, x, y, w, h, **kwargs)
+        return cv.drawContours(color_img, cntrs[cnt_index], 0, kwargs.get('color', (0,255,0)), kwargs.get('width', 2))
+
+    @staticmethod
+    def draw_rectangle(image, x, y, w, h, color=(0,0,255), width=2):
+        """The image should be a color image."""
+        return cv.rectangle(image, (x, y), (x+w,y+h), color, width)
 
     def canny(self, image, minval=100, maxval=200, aperature_size=3, L2gradient=True):
         """The four values that are used to compute the Canny edge detection are:
