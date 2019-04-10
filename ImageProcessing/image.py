@@ -39,6 +39,57 @@ class Image:
 
         self.operations = kwargs.get('operations')
 
+    def harraj_and_raissouni(self, color='rgb', amount=1.5, radius=0.5, threshold=0):
+        """This is an image processing techinique developed by Harraj and Raissouni.
+
+        Notes:
+        * The purpose of their research was to improve the image quality from digital/mobile camera's.
+        * Strategy: Illumination adjustment, grayscale conversion, Un-sharp masking, & Optimized adaptive thresholding.
+        * Illumination Adjustment:
+            * Contrast Limited Adaptive Histogram Equalization (CLAHE)
+            * Convert image color space to HSV.
+            * Apply CLAHE to the V(Value) channel, then merge the channels back to HSV, then convert back to RGB.
+            * For Brigthness equalization use YUV and the Y channel(this is the luma channel).
+            * `g(x,y) = a * f(x,y) + B` where `f(x,y)` is the original pixel at `x, y`, `g(x,y)` is the resulting image,
+            * `a` is the contrast controller , and `B` is the brightness controller.
+        * Grayscale Conversion:
+            * Luminance is the most important for feature extraction (Luminance = 0.3*R + 0.59*G + 0.11*B)
+        * Un-Sharp Masking:
+            * Can improve details by subtracting a blurred version from the original image.
+            * They use a Gaussian filter to blur the image with a kernal size of 3x3(amount=1.5, radius=0.5, thresh=0)
+            * Be cautious of over sharpening
+        * Thresholding:
+            * They use the Otsu thresholding and claim that the Illumination adjustment corrects the bimodal issues with Otsu.
+        """
+        clahe = cv.createCLAHE(clipLimit=4.0, tileGridSize=(8,8))
+        # `cv.cvtColor()` might not use the same conversion to hsv.
+        h, s, v = cv.split(self.operator.convert_color(self.data, {'from': color, 'to': 'hsv'}))
+        # see Illumination Adjustment notes above (bullet point 3)
+        v = clahe.apply(v)
+        # not sure if `cv.split()` and `cv.merge()` is optimal, might just want to use numpy indexing/slicing
+        hsv = cv.merge((h, s, v))
+        self.data = self.operator.convert_color(hsv, {'from': 'hsv', 'to': 'rgb'})
+
+        yuv = self.operator.convert_color(self.data, {'from': 'rgb', 'to': 'yuv'})
+        
+        luma_std, luma_br = np.std(yuv[:,:,0]), np.mean(yuv[:,:,0])
+        n_std, n_br = np.std(yuv), np.mean(yuv)
+        # helpful resource: http://im.snibgo.com/gainbias.htm
+        gain = luma_std / n_std
+        bias = luma_br - n_br * gain
+        
+        # This Adjusts The Contrast and Brightness!
+        # Source: (https://docs.opencv.org/4.1.0/d3/dc1/tutorial_basic_linear_transform.html)
+        self.data = cv.convertScaleAbs(yuv, alpha=gain, beta=bias)
+        self.data = self.operator.convert_color(self.data, {'from': 'yuv', 'to': 'rgb'})
+        self.data = self.operator.convert_color(self.data, {'from': 'rgb', 'to': 'gray'})
+        # Un-Sharp Mask
+        blurred = self.operator.blur(self.data, ksize=(3,3))
+        self.data = cv.addWeighted(self.data, amount, blurred, radius, threshold)
+
+        #self.data = self.operator.binarization(self.data)
+        self.show()
+        
     def _reshape_data(self, shape, contiguous=True):
         if contiguous:
             # This will raise an error if the data is copied (aka the shape is changed in place)
@@ -136,7 +187,7 @@ class Image:
             plt.hist(self.data.ravel(), 256, [0,256])
         elif isinstance(self.histogram, dict):
             plt.subplot(211)
-            plt.imshow(self.data)
+            plt.imshow(self.data, interpolation='nearest')
             plt.subplot(212)
             for k,v in self.histogram.items():
                 plt.plot(v, color=k)
