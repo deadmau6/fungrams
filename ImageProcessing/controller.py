@@ -117,6 +117,8 @@ class ImageController:
                 image.show(fsize=val)
         elif args.ocr:
             print(image.ocr())
+        elif args.method:
+            image.harraj_and_raissouni()
         else:
             image.show()
         

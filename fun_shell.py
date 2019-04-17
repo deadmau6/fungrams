@@ -230,6 +230,13 @@ def impro_flags(sub):
         default=False
         )
     impro_tools.add_argument(
+        '-m',
+        '--method',
+        action='store_true',
+        help='Run the Harraj and Raissouni Pre-Processing method.',
+        default=False
+        )
+    impro_tools.add_argument(
         '-r',
         '--resize',
         type=str,
