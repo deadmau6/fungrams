@@ -1,9 +1,12 @@
 from pprint import pprint
 from .operations import ImageOperations
 from matplotlib import pyplot as plt
+from PIL import Image
 import numpy as np
 import cv2 as cv
 import os.path as ospath
+import pytesseract
+import csv
 
 class Image:
 
@@ -146,3 +149,31 @@ class Image:
             plt.xlim([0,256])
         plt.show()
     
+    def ocr(self, lang=None, config='', nice=0, output=None):
+        o_type = pytesseract.Output.STRING
+        
+        if output:
+            if output == 'bytes':
+                o_type = pytesseract.Output.BYTES
+            elif output == 'data.frame':
+                o_type = pytesseract.Output.DATAFRAME
+            elif output == 'dict':
+                o_type = pytesseract.Output.DICT
+
+        return pytesseract.image_to_string(self.data, lang=lang, config=config, nice=nice, output_type=o_type)
+
+    def get_ocr_data(self):
+        tsv = [x.split('\t') for x in pytesseract.image_to_data(self.data).splitlines()]
+        tesseract_data = []
+        pprint(tsv)
+        for entry in tsv[1:]:
+            if len(entry) < 12:
+                continue
+            level, page, block, par, line, word, left, top, width, height, conf, text = entry
+            tesseract_data.append({
+                    'location': (level, page, block, par, line, word),
+                    'box': (left, top, width, height),
+                    'conf': conf,
+                    'text': text
+                })
+        return tesseract_data
