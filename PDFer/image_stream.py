@@ -3,7 +3,6 @@ import numpy as np
 import io
 from .hufftable import HuffTable 
 from .static import jpgIgnoreBytes
-import binascii
 
 class ImageStream:
 
