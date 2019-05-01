@@ -1,6 +1,6 @@
 from .recursive_parser import RecursiveParser
 from pprint import pprint
-from adobe_glyph_dict import glyph_dict
+from .static import glyph_dict
 
 class PDFParser(RecursiveParser):
 
