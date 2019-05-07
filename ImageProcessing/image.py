@@ -39,7 +39,7 @@ class Image:
 
         self.operations = kwargs.get('operations')
 
-    def harraj_and_raissouni(self, color='rgb', amount=1.5, radius=0.5, threshold=0):
+    def harraj_and_raissouni(self, color='rgb', amount=2.0, radius=0.5, threshold=0):
         """This is an image processing techinique developed by Harraj and Raissouni.
 
         Notes:
