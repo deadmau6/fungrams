@@ -38,6 +38,47 @@ class Dynamic:
         return Dynamic.fibonacci(N-1) + Dynamic.fibonacci(N-2)
 
     @staticmethod
+    def minimum_edit_distance(X, Y):
+        """ Given the string X and Y, calculate the Levenshtien distance from X to Y. Note that the
+        Levenshtien distance gives a weight of 1 for inserting/deleting characters and a weight of 2
+        for substituting characters.(Resource: https://youtu.be/Q7QQCNM7AJ4)
+        """
+        m = len(X)
+        n = len(Y)
+        d = [[0 for x in range(n+1)] for y in range(m+1)]
+        for i in range(m+1):
+            for j in range(n+1):
+                if j == 0:
+                    d[i][0] = i
+                elif i == 0:
+                    d[0][j] = j
+                else:
+                    l = 0 if X[i-1] == Y[j-1] else 2
+                    d[i][j] = min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + l)
+        #pprint(Dynamic._backtrace_edit_distance(d))
+        return d[m][n]
+
+    @staticmethod
+    def _backtrace_edit_distance(dsts):
+        backtrace = []
+        i = len(dsts) - 1
+        j = i
+        while i >= 0:
+            curr = dsts[i][j]
+            backtrace.append(curr)
+            left = dsts[i][j-1] + curr
+            down = dsts[i-1][j] + curr
+            diag = dsts[i-1][j-1] + curr
+            if left < down and left < diag:
+                j -= 1
+            elif down < left and down < diag:
+                i -= 1
+            else:
+                i -= 1
+                j -= 1
+        return backtrace
+
+    @staticmethod
     def LCS(X, Y, m, n):
         """ Given two character sequences X and Y, find the longest common subsequence.
         Note that comparison between characters in the sequences is in fact case sensitive!
@@ -68,6 +109,13 @@ class Dynamic:
 
     @staticmethod
     def similarity_seq_image(text_file):
+        """Given a text file, create a self similarity matrix based on the words in the text file.
+        The matrix is then converted into an image using opencv, each pixel represents a word match
+        and the color is just a random gradient. Note: the pixel opacity is set by a strength modifier,
+        which represents word sequences. This helps eliminate excess noise caused by common words like
+        'the' or 'a' and it highlights repetitiveness.
+        (Resource: https://www.youtube.com/watch?v=_tjFwcmHy5M)
+        """
         with open(text_file, 'rb') as f:
             data = f.read().decode('utf-8', 'ignore').lower()
         
@@ -149,5 +197,9 @@ class Dynamic:
             print(f"Found LCS: {subseq}\nLCS Length: {len(subseq)}")
         elif args.word_image:
             Dynamic.similarity_seq_image(args.word_image)
+        elif args.edit_distance:
+            s1 = args.edit_distance[0]
+            s2 = args.edit_distance[1]
+            print(Dynamic.minimum_edit_distance(s1, s2))
         else:
-            print(Dynamic.fibonacci(10))
+            print("No function specified.")

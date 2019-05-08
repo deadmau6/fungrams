@@ -36,10 +36,18 @@ def dp_flags(sub):
         default=False
         )
     dp_tools.add_argument(
+        '-e',
+        '--edit-distance',
+        help=Dynamic.minimum_edit_distance.__doc__,
+        nargs=2,
+        metavar=('X', 'Y'),
+        default=False
+        )
+    dp_tools.add_argument(
         '-w',
         '--word-image',
         type=str,
-        help='Text File location.',
+        help=Dynamic.similarity_seq_image.__doc__,
         default=False
         )
     dp_parser.set_defaults(func=dp.start)
