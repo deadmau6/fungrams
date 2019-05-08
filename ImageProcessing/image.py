@@ -39,7 +39,7 @@ class Image:
 
         self.operations = kwargs.get('operations')
 
-    def harraj_and_raissouni(self, color='rgb', amount=1.5, radius=0.5, threshold=0):
+    def harraj_and_raissouni(self, color='rgb', amount=2.0, radius=0.5, threshold=0):
         """This is an image processing techinique developed by Harraj and Raissouni.
 
         Notes:
@@ -88,6 +88,39 @@ class Image:
         self.data = cv.addWeighted(self.data, amount, blurred, radius, threshold)
 
         #self.data = self.operator.binarization(self.data)
+        self.show()
+
+    def crop_morphology(self):
+        """This method refers to this blog post:
+        http://www.danvk.org/2015/01/07/finding-blocks-of-text-in-an-image-using-python-opencv-and-numpy.html
+
+        Steps:
+         * Fisrt apply canny edge detection to clean the background
+             * This also makes the text regions into bright clumps of edges and the borders into long lines 
+         * We then need to remove the borders, this can be done with a rank filter
+             * essentially we take the median of pixels to the left and right
+             * text will have lots of white pixels but the borders will just be a thin line
+         * We can then take the countours of the edge image and then we find a bounding box that:
+             * has the max number of white pixels and is as small as possible
+             * these goals are opposing so this is a precision/recall tradeoff problem
+             * recall = the fraction of white pixels inside the box
+             * precision = the fraction of the image outside the box
+             * to solve this problem we need to optimize the F1 score (harmonic mean of precision and recall)
+             * however we have a lot of contours to consider and this can get computationally expensive fast
+         * To help with the contours we can use binary dilation so that the dominant text areas will bleed out
+         * Now that we have reduced the number of boxes we have a subset sum problem:
+             * Which subset produces a box that maximizes the F1 score?
+         * Finnally apply the crop/mask and run the OCR.
+        """
+        self.data = self.operator.convert_color(self.data, {'from': 'rgb', 'to': 'gray'})
+        #n_data = self.operator.bitwise(self.data)
+        self.data = self.operator.canny(self.data)
+        #self.data = self.operator.bitwise(self.data, method='AND', other_image=n_data)
+        rows = cv.Scharr(self.data, cv.CV_8U, 0, 1)
+        columns = cv.Scharr(self.data, cv.CV_8U, 1, 0)
+        self.data = self.operator.bitwise(rows, method='AND', other_image=columns)
+        self.data = self.operator.morph(self.data, method='close', kshape='ellipse', ksize=(5,5), i=2)
+        self.data = self.operator.contours(self.data, method='bounding_all')
         self.show()
         
     def _reshape_data(self, shape, contiguous=True):

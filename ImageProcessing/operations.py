@@ -48,6 +48,7 @@ class ImageOperations:
             retr = cv.RETR_TREE
         
         im, cntrs, hierarchy = cv.findContours(image, retr, chain_approx)
+        print(len(cntrs))
         color_img = self.convert_color(image, cv.COLOR_GRAY2RGB)
         cnt_index = kwargs.get('contour', 0)
         if method == 'draw_all':
@@ -55,6 +56,11 @@ class ImageOperations:
         if method == 'bounding_rect':
             x, y, w, h = cv.boundingRect(cntrs[cnt_index])
             return ImageOperations.draw_rectangle(color_img, x, y, w, h, **kwargs)
+        if method == 'bounding_all':
+            for c_index in range(len(cntrs)):
+                x, y, w, h = cv.boundingRect(cntrs[c_index])
+                ImageOperations.draw_rectangle(color_img, x, y, w, h, **kwargs)
+            return color_img
         return cv.drawContours(color_img, cntrs[cnt_index], 0, kwargs.get('color', (0,255,0)), kwargs.get('width', 2))
 
     @staticmethod

@@ -119,6 +119,7 @@ class ImageController:
             print(image.ocr())
         elif args.method:
             image.harraj_and_raissouni()
+            #image.crop_morphology()
         else:
             image.show()
         
