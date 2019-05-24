@@ -1,7 +1,7 @@
 from .pdf_scanner import PdfScanner
 from .pdf_parser import PDFParser
+from .static import glyph_dict
 from pprint import pprint
-from adobe_glyph_dict import glyph_dict
 
 class Font:
 
