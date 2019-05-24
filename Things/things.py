@@ -1,3 +1,4 @@
+from .quotes import Quotes
 import random
 
 class Things:
@@ -52,4 +53,8 @@ class Things:
         return sect.split(b'\n')
 
     def start(self, args):
-        Things.pennys_game()
+        if args.pennys_game:
+            Things.pennys_game()
+        else:
+            brainy_quote = Quotes()
+            print(brainy_quote.qotd())
