@@ -167,7 +167,7 @@ class Image:
             # check color grayscale
             return self.operator.mask(img, args.get('x'), args.get('y'), args.get('w'), args.get('h'))
         if opr == 'contours':
-            return self.operator.contours(img)
+            return self.operator.contours(img, args.pop('method', 'draw_all'), **args)
         if opr == 'canny':
             return self.operator.canny(img, **args)
         return None
@@ -196,7 +196,7 @@ class Image:
     def show(self, rsize=None, fsize=None):
         """Simply displays the current image data."""
         if rsize:
-            image = cv.resize(self.data, resize)
+            image = cv.resize(self.data, rsize)
             cv.imshow('image', image)
         elif fsize:
             image = cv.resize(self.data, None, fx=fsize, fy=fsize)
