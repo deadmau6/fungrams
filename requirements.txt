@@ -1,0 +1,8 @@
+numpy
+lxml
+Pillow
+pymongo
+scipy
+pytesseract
+beautifulsoup4
+matplotlib
