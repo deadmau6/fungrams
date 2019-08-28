@@ -50,11 +50,15 @@ class ImageOperations:
         im, cntrs, hierarchy = cv.findContours(image, retr, chain_approx)
         print(len(cntrs))
         color_img = self.convert_color(image, cv.COLOR_GRAY2RGB)
-        cnt_index = kwargs.get('contour', 0)
+        cnt_index = kwargs.pop('contour', 0)
         if method == 'draw_all':
             return cv.drawContours(color_img, cntrs, -1, kwargs.get('color', (0,255,0)), kwargs.get('width', 2))
         if method == 'bounding_rect':
             x, y, w, h = cv.boundingRect(cntrs[cnt_index])
+            return ImageOperations.draw_rectangle(color_img, x, y, w, h, **kwargs)
+        if method == 'bounding_largest':
+            c = max(cntrs, key=cv.contourArea)
+            x, y, w, h = cv.boundingRect(c)
             return ImageOperations.draw_rectangle(color_img, x, y, w, h, **kwargs)
         if method == 'bounding_all':
             for c_index in range(len(cntrs)):
