@@ -53,8 +53,10 @@ class Things:
         return sect.split(b'\n')
 
     def start(self, args):
+        brainy_quote = Quotes()
         if args.pennys_game:
             Things.pennys_game()
+        elif args.author:
+            brainy_quote.quotes_by_author(args.author)
         else:
-            brainy_quote = Quotes()
-            print(brainy_quote.qotd())
+            brainy_quote.qotd()

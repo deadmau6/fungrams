@@ -65,6 +65,13 @@ def things_flags(sub):
         action='store_true',
         default=False
         )
+    things_tools.add_argument(
+        '-a',
+        '--author',
+        help="print quotes from an author",
+        type=str,
+        default=False
+        )
     things_parser.set_defaults(func=things.start)
 
 def funpiler_flags(sub):
