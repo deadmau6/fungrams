@@ -59,6 +59,13 @@ def things_flags(sub):
     things_tools = things_parser.add_mutually_exclusive_group()
 
     things_tools.add_argument(
+        '-g',
+        '--gauss-trick',
+        help=Things.gauss_trick.__doc__,
+        action='store_true',
+        default=False
+        )
+    things_tools.add_argument(
         '-p',
         '--pennys-game',
         help=Things.pennys_game.__doc__,
@@ -71,6 +78,21 @@ def things_flags(sub):
         help="print quotes from an author",
         type=str,
         default=False
+        )
+    
+    things_parser.add_argument(
+        '-s',
+        '--start',
+        type=int,
+        help='Number to start the sum from.',
+        default=1
+        )
+    things_parser.add_argument(
+        '-e',
+        '--end',
+        type=int,
+        help='Number to sum to.',
+        default=10
         )
     things_parser.set_defaults(func=things.start)
 
