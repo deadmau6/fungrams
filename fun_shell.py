@@ -1,4 +1,4 @@
-from DP import Dynamic
+from DynamicPrograms import Dynamic
 from Things import Things
 from Funpiler import Funpiler
 from PDFer import PDFer
@@ -7,7 +7,7 @@ import argparse
 
 def dp_flags(sub):
     dp = Dynamic()
-    dp_parser = sub.add_parser("dp", help="Runs dynamic programming scripts.")
+    dp_parser = sub.add_parser("dyno", help="Runs dynamic programming scripts.")
     # Confilcting arguments are mutually exclusive
     dp_tools = dp_parser.add_mutually_exclusive_group()
 
