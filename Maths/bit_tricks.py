@@ -12,6 +12,9 @@ def kth_bit(n, k, op='toggle'):
     return n ^ (1 << k)
 
 def bit_mask(n, mask, shift, w=0, op='extract'):
+    """NOTE: ~x + 1 = -x
+    And least significant bit = x & (-x)
+    """
     if op == 'set':
         return (x & ~mask) | ((y << shift) & mask)
     # Assume: Op == 'extract'
@@ -38,12 +41,178 @@ def bit_min(a, b):
 
 def bit_mod_add(x, y, n):
     """How it works:
+     Assuming that r = (x + y) mod n and that 0 <= x < n and 0 <= y < n
+     Unless n is a power of 2 the classic method will use division which is expensive.
+     What we can do is first let z = x + y and now r = z if z < n else z-n.
+     Problem is that this will create branches in the assembly and even worse this particular branching is unpredicable.
+     However, we can use the same trick from 'bit_min' to solve this problem.
+     So if -(z >= n) = -1 then n & -1 = n which => z - n. If -(z >= n) = 0 then n & 0 = 0 which => z. 
     """
     z = x + y
     return z - (n & -(z >= n))
 
-def queens_problem():
+def ciel_to_power_of_2(n, power=6):
+    """Helpful notes:
+     Recall that n - 1 flips the right most bit and pads the right with ones.
+     So n = '1010 1000' then n-1 = '1010 0111', then we set n = n - 1.
+     Now lets say m = n >> 1 so m = '0101 0011', notice the zero's is in the gap.
+     Next we let n = n || m = '1010 0111' || '0101 0111' => '1111 0111'.
+     Then we repeat x times, such that { n(i) = n(i) || (m(i) = n >> 2 ** i) for i in [0,1,...x-1,x] }.
+     Because we use the 'or' operator at each iteration, 'n' ones will just be padded to the right.
+     In the end we should have n = '0000 1111 1111'and n+1 = '0001 0000 0000' = 256.
+    """
+    n -= 1
+    # max power of 2 is 2^power
+    for i in range(power):
+        ### if power == 6 this is what will run:
+        # n |= n >> 1
+        # n |= n >> 2
+        # n |= n >> 4
+        # n |= n >> 8
+        # n |= n >> 16
+        # n |= n >> 32
+        ###
+        n |= n >> 2 ** i
+    return n+1
+
+def log2_power2(n):
+    """ Find the log base 2 of a power of 2. (so n must be a power of 2).
+    A deBruijn sequence 's' of length 2^k is a cyclic '0'-'1' sequence such that each of the
+    2^k 0-1 strings of length k occurs exactly once as a substring of 's'.
+
+    Example: s = 00011101 and k = 3
+    --------------------------------
+    i | 00011101   | x
+    0 | 000        | 0
+    1 |  001       | 1
+    2 |   011      | 3
+    3 |    111     | 7
+    4 |     110    | 6 
+    5 |      101   | 5
+    6 |       010  | 2
+    7 |        100 | 4
+    --------------------------------
+    Then create a convert table of length 2^k that represents the index 'i' of s given the value 'x' which is the substring of s of length k.
+    So convert = [0,1,6,2,7,5,4,3], and convert[x] = i :
+    ___________________________________
+    x | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+    --|---|---|---|---|---|---|---|---|
+    i | 0 | 1 | 6 | 2 | 7 | 5 | 4 | 3 |
+    -----------------------------------
+
+    Now recall that n is a power of 2 and we are looking for log2(n) = z such that 2^z = n.
+    Suppose n = 16 and because n is a power of 2 we can do s * n => s << z, so :
+    '0001 1101' * 16 = '1101 0000' now we wanna find the deBruijn value at the top of this sequence.
+    To do that we can right shift the sequence by 5(?idk maybe bc 3 is not a power of 2): '1101 0000' >> 5 = 6.
+    And now that we have the shift result we can look up the index where this result originally appeared in the sequence!
+    convert[6] = 4 => log2(16) = 4 => 2^4 = 16.
+
+    NOTE: This only works with a specific deBruijn sequence because that will give us a specific convert table!
+    The previous example was just a subsection of that sequence but the convert tables are different(as you'll see).
+    """
+    # A deBruijn sequence of length 2^k, where k = 8 so n must be less than 64.
+    deBruijn = 0x022fdd63cc95386d
+    convert = [
+        0,   1,  2, 53,  3,  7, 54, 27,
+        4,  38, 41,  8, 34, 55, 48, 28,
+        62,  5, 39, 46, 44, 42, 22,  9,
+        24, 35, 59, 56, 49, 18, 29, 11,
+        63, 52,  6, 26, 37, 40, 33, 47,
+        61, 45, 43, 21, 23, 58, 17, 10,
+        51, 25, 36, 32, 60, 20, 57, 16,
+        50, 31, 19, 15, 30, 14, 13, 12
+    ]
+    return convert[(n * deBruijn) >> 58]
+
+def queens_problem(n):
+    """Given an n x n grid, place n queens s.t. no two queens are in the same row, column, or diagonal.
+    This problem is solved with backtracking search but we can represent the grid in a helpful way using only 3 bit vectors.
+    So we create 3 bit vectors of size n, 2n - 1 and 2n - 1.
+    Example n = 4:
+    --------------------------------------------------
+        Down(size n)    Left(2n - 1)    Right(2n - 1)
+        [_][_][q][_]   0[_][_][q][_]    [_][_][q][_]0
+        [q][_][_][_]   1[q][_][_][_]    [q][_][_][_]1
+        [_][_][_][q]   1[_][_][_][q]    [_][_][_][q]1
+        [_][q][_][_]   0[_][q][_][_]    [_][q][_][_]0
+         1  1  1  1      1  1  0            0  1  1
+    --------------------------------------------------
+    Down, stores a 1 for each column with a queen and a 0 otherwise, checking column c is safe if down & (1 << c) == 0.
+    Left, stores a 1 for each right-left diagonal with a queen, checking row r and column c is safe if left & (1 << (r+c)) == 0.
+    Right, stores a 1 for each left-right diagonal with a queen, checking row r and column c is safe if right & (1 << (n-1-r+c)) == 0.
+    """
     pass
+
+def population_count(n, op=None):
+    """ Count the number of 1 bits in word n.
+    Also you can use this to find log2_power2(n) by doing population_count(n-1)
+    """
+    if op == 'mask':
+        # 0^32 1^32
+        M5 = ~((-1) << 32)
+        # 0^32 1^32
+        M4 = M5 ^ (M5 << 16)
+        # 0^32 1^32
+        M3 = M4 ^ (M4 << 8)
+        # 0^32 1^32
+        M2 = M3 ^ (M3 << 4)
+        # 0^32 1^32
+        M1 = M2 ^ (M2 << 2)
+        # (01)32
+        M0 = M1 ^ (M1 << 1)
+        # Computes Count
+        n = ((n >> 1) & M0) + (n & M0)
+        n = ((n >> 2) & M1) + (n & M1)
+        n = ((n >> 4) + n) & M2
+        n = ((n >> 8) + n) & M3
+        n = ((n >> 16) + n) & M4
+        n = ((n >> 32) + n) & M5
+        return n
+    if op == 'lookup':
+        count_table = [
+                0, 1, 1, 2, 1, 2, 2, 3,
+                1, 2, 2, 3, 2, 3, 3, 4,
+                1, 2, 2, 3, 2, 3, 3, 4,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                1, 2, 2, 3, 2, 3, 3, 4,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                1, 2, 2, 3, 2, 3, 3, 4,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                4, 5, 5, 6, 5, 6, 6, 7,
+                1, 2, 2, 3, 2, 3, 3, 4,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                4, 5, 5, 6, 5, 6, 6, 7,
+                2, 3, 3, 4, 3, 4, 4, 5,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                4, 5, 5, 6, 5, 6, 6, 7,
+                3, 4, 4, 5, 4, 5, 5, 6,
+                4, 5, 5, 6, 5, 6, 6, 7,
+                4, 5, 5, 6, 5, 6, 6, 7,
+                5, 6, 6, 7, 6, 7, 7, 8
+            ]
+        r = 0
+        while n != 0:
+            r += count_table[n & 255]
+            n >>= 8
+        return r
+    r = 0
+    while n != 0:
+        r += 1
+        n &= n - 1
+    return r
 
 def magic_triangle(arr, M):
     """Given a list of 6 integers that form a triangle[a-e], determine if there is a solution s.t.:
@@ -68,4 +237,8 @@ if __name__ == "__main__":
     print(bit_min(5, 10))
     print(bit_min(5, -10))
     print(magic_triangle([1,2,3,4,5,6], 8))
-    # 4, 5, 7, 8
+    print(ciel_to_power_of_2(68))
+    print(log2_power2(16))
+    print(population_count(255))
+    print(population_count(255, 'lookup'))
+    print(population_count(255, 'mask'))
