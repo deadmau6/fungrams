@@ -30,14 +30,16 @@ def bit_swap(a, b):
     a = a ^ b
     return a, b
 
-def bit_min(a, b):
+def bit_bounds(a, b, op='min'):
     """How it works:
      First we assume that (b < a) will return 1 for true and 0 for false.
      If b < a then -(b < a) => -1 which is all 1's, so a ^ ((b ^ a) & -1) == a ^ (b ^ a),
      Then from the 'bit_swap' that a ^ b ^ a = b
      If b >= a then -(b < a) => 0, so a ^ ((b ^ a) & 0) == a ^ 0 == a.
     """
-    return a ^ ((b ^ a) & -(b < a))
+    if op == 'min':
+        return a ^ ((b ^ a) & -(b < a))    
+    return b ^ ((b ^ a) & -(b < a))
 
 def bit_mod_add(x, y, n):
     """How it works:
@@ -234,8 +236,8 @@ def magic_triangle(arr, M):
     return min_corners <= corners <= max_corners
 
 if __name__ == "__main__":
-    print(bit_min(5, 10))
-    print(bit_min(5, -10))
+    print(bit_bounds(5, 10))
+    print(bit_bounds(5, -10))
     print(magic_triangle([1,2,3,4,5,6], 8))
     print(ciel_to_power_of_2(68))
     print(log2_power2(16))
