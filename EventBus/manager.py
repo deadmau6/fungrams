@@ -42,6 +42,7 @@ class Manager:
         """
         if update_obj.get('status') == 'DONE':
             print(f"{update_obj['name']}:{update_obj['id']}({update_obj['status']}) - {update_obj['update']}")
+            self.close_event(pipe_fileno)
         else:
             print(f"{update_obj['name']}:{update_obj['id']}({update_obj['status']}) - {update_obj['update']}")
 
