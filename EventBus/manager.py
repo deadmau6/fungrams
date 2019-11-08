@@ -55,7 +55,7 @@ class Manager:
                     self.dispatch_pipes, self.event_pipes, self.event_pipes, 0.001)
                 for conn in readable:
                     self.read_event(conn)
-            except KeyboardInterrupt:
+            except (KeyboardInterrupt, SystemExit):
                 print('\nExiting...')
                 for pipe_fileno in self.active_pipes.keys():
                     self.close_event(pipe_fileno)
