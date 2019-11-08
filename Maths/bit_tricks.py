@@ -1,4 +1,5 @@
-import argparse
+import argparse, random
+from pprint import pprint
 """
  Source: https://www.youtube.com/watch?v=ZusiKXcz_ac
 """
@@ -235,12 +236,83 @@ def magic_triangle(arr, M):
     corners = 3*M - X
     return min_corners <= corners <= max_corners
 
+def get_seq(x):
+    seq = [i+1 for i in range(x)]
+    for i in range(x-1, 1, -1):
+        r = random.randint(0, i)
+        if r == i:
+            continue
+        temp = seq[i]
+        seq[i] = seq[r]
+        seq[r] = temp
+    return seq
+
+def select_strat(p, seq):
+    n = int(len(seq)/2)
+    p_index = p
+    for i in range(n):
+        if seq[p_index-1] == p:
+            return True
+        p_index = seq[p_index-1]
+    return False
+
+def get_cycles(seq):
+    indexes = set([_ for _ in range(len(seq))])
+    curr = []
+    cycles = []
+    i = indexes.pop()
+    while True:
+        val = seq[i]
+        if len(indexes) == 0:
+            curr.append(val)
+            cycles.append(curr)
+            break
+        elif val in curr:
+            cycles.append(curr)
+            curr = []
+            i = indexes.pop()
+        else:
+            curr.append(val)
+            indexes.discard(val-1)
+            i = val - 1
+    print(i)
+    return cycles
+
+def josephus(arr):
+    if len(arr) == 1:
+        return arr[0]
+    remain = []
+    for i in range(0, len(arr), 2):
+        val = arr[i]
+        if val not in remain:
+            if i == len(arr)-1:
+                remain.insert(0, val)
+            else:
+                remain.append(val)
+    return josephus(remain)
+
 if __name__ == "__main__":
-    print(bit_bounds(5, 10))
-    print(bit_bounds(5, -10))
-    print(magic_triangle([1,2,3,4,5,6], 8))
-    print(ciel_to_power_of_2(68))
-    print(log2_power2(16))
-    print(population_count(255))
-    print(population_count(255, 'lookup'))
-    print(population_count(255, 'mask'))
+    #print(bit_bounds(5, 10))
+    #print(bit_bounds(5, -10))
+    #print(magic_triangle([1,2,3,4,5,6], 8))
+    #print(ciel_to_power_of_2(68))
+    #print(log2_power2(16))
+    #print(population_count(255))
+    #print(population_count(255, 'lookup'))
+    #print(population_count(255, 'mask'))
+    #s = get_seq(10)
+    #print(s)
+    #cs = get_cycles(s)
+    #print(cs)
+    #res = []
+    #for i in range(1, 11):
+    #    res.append((i, select_strat(i, s)))
+    #print(res)
+    table = {}
+    for n in range(1, 25):
+        arr = [i+1 for i in range(n)]
+        table[n] = josephus(arr)
+    #n = 9
+    #arr = [i+1 for i in range(n)]
+    #table[n] = josephus(arr)
+    pprint(table)
