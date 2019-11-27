@@ -291,6 +291,15 @@ def josephus(arr):
                 remain.append(val)
     return josephus(remain)
 
+def pseudo_gradient_descent(point, step_size, threshold):
+    # step_size or "learning rate" are better if they are small but take longer to converge.
+    value = f(point)
+    new_point = point - step_size * gradient(point)
+    new_value = f(new_point)
+    if abs(new_value - value) < threshold:
+        return value
+    return pseudo_gradient_descent(new_point, step_size, threshold)
+
 if __name__ == "__main__":
     #print(bit_bounds(5, 10))
     #print(bit_bounds(5, -10))
