@@ -52,10 +52,23 @@ class Things:
             sect = f.read(end - start)
         return sect.split(b'\n')
 
+    @staticmethod
+    def gauss_trick(start, end):
+        """ The Gauss trick is used to quickly find the sum of a given sequence (N).
+        The sequence must be comprised of whole numbers and must be a range that increments
+        by one, or N = start + (start + 1) + (start + 2) + (start + 3)... + end.
+        """
+        if start < end:
+            print(int((start + end) * ((end - start + 1) / 2)))
+        else:
+            print("Invalid range, the start must be less than the end.")
+
     def start(self, args):
         brainy_quote = Quotes()
         if args.pennys_game:
             Things.pennys_game()
+        elif args.gauss_trick:
+            Things.gauss_trick(args.start, args.end)
         elif args.author:
             brainy_quote.quotes_by_author(args.author)
         else:
