@@ -3,6 +3,7 @@ from Things import Things
 from Funpiler import Funpiler
 from PDFer import PDFer
 from ImageProcessing import ImageController
+from Config import Configuration
 import argparse
 
 def dp_flags(sub):
