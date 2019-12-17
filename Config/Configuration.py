@@ -29,9 +29,9 @@ class Configuration:
         """Get the provided section as an object.
 
         Returns - ( is_error [Boolean], section_dict [Dict] or error_message [String])."""
-        if self.config.has_section(section):
+        if self.config.has_section(section.upper()):
             sect_obj = {}
-            for k, v in self.Config.items(section):
+            for k, v in self.config.items(section.upper()):
                 sect_obj[k] = v
             return False, sect_obj
         else:
@@ -57,7 +57,7 @@ class Configuration:
         Returns - ( section_exists [Boolean], message [String] )."""
         try:
             # Adds a new section.
-            self.config.add_section(section)
+            self.config.add_section(section.upper())
             # Immediately writes config to disk.
             if immediate_update:
                 self._update_config()
@@ -80,7 +80,7 @@ class Configuration:
         # 'error' should be true only if the entry does not exist!
         error, val = self.get_entry(section, entry)
         if error or overwrite:
-            self.config.set(section, entry, value)
+            self.config.set(section.upper(), entry, value)
             if immediate_update:
                 self.update_config()
             return True, f'Successfully added entry [{section}] {entry} = {value}'
@@ -217,7 +217,7 @@ class Configuration:
                 time.sleep(0.2)
                 answer = sys.stdin.readline()
                 if answer[0] == 'y':
-                    self.config.remove_section(section)
+                    self.config.remove_section(section.upper())
                     self._update_config()
                     print(f'Deleted section: {section}')
                     break
@@ -237,7 +237,7 @@ class Configuration:
                 time.sleep(0.2)
                 answer = sys.stdin.readline()
                 if answer[0] == 'y':
-                    self.config.remove_option(section, entry)
+                    self.config.remove_option(section.upper(), entry)
                     self._update_config()
                     print(f'Deleted entry: [{section}] {entry} = {value}')
                     break
@@ -333,16 +333,16 @@ class Configuration:
             raise Exception(f"ERROR: 'result' must be an instance of {type(configparser.ConfigParser())} not of {type(result)}.")
         skipped = {}
         for section in changes.sections():
-            if not result.has_section(section):
-                result.add_section(section)
+            if not result.has_section(section.upper()):
+                result.add_section(section.upper())
             for entry, value in changes.items(section):
-                if result.has_option(section, entry):
+                if result.has_option(section.upper(), entry):
                     if section in skipped:
                         skipped[section].append(entry)
                     else:
                         skipped[section] = [entry]
                 else:
-                    result.set(section, entry, value)
+                    result.set(section.upper(), entry, value)
         if verbose:
             print('Successfully merged configs.')
             if len(skipped.keys()) > 0:
@@ -372,10 +372,10 @@ class Configuration:
             warnings = []
             for section in options.keys():
                 try:
-                    if initial.has_section(section):
+                    if initial.has_section(section.upper()):
                         warnings.append(f"Section: {section}, already exists.")
                     else:
-                        initial.add_section(section)
+                        initial.add_section(section.upper())
                     if not isinstance(options[section], dict):
                         raise Exception(f"{section} must be of type 'dict' and not {type(options[section])}.") 
 
@@ -387,10 +387,10 @@ class Configuration:
                 else:
                     for entry, value in options[section].items():
                         # DO NOT OVERWRITE.
-                        if initial[section].get(entry):
+                        if initial[section.upper()].get(entry):
                             warnings.append(f"Entry: {section} - {entry} already has a value and will be skipped. Use merge to overwrite this value.")
                         else:
-                            initial.set(section, entry, value)
+                            initial.set(section.upper(), entry, value)
             # Display the warnings and errors.
             for w in warnings:
                 print(f"WARNING: {w}")
