@@ -283,6 +283,42 @@ def impro_flags(sub):
         )
     impro_parser.set_defaults(func=impro.start)
 
+def config_flags(sub):
+    config = Configuration()
+    # Config application descriptor.
+    config_parser = sub.add_parser("config", help="Configures 'cm' for the user's instance")
+    # Display section from local.ini file.
+    config_parser.add_argument(
+        "-s",
+        "--section",
+        help="Print a section from the config file (case doesn't matter)",
+        nargs=1,
+        metavar=('SECT_NAME')
+        )
+    # Adds and updates sections and/or entries to local.ini.
+    config_parser.add_argument(
+        "--set",
+        help="if 1 argument is provided then it is added as a section. If 3 args are provided then the entry SECT KEY VALUE is added/updated",
+        nargs='+'
+        )
+    # Deletes sections and/or entries from local.ini.
+    config_parser.add_argument(
+        "-d",
+        "--delete",
+        help="if 1 argument is provided then the section is deleted. If 2 args are provided then the entry SECT KEY VALUE is deleted",
+        nargs='+'
+        )
+    # Returns the initial local fields established in the config.setup().
+    config_parser.add_argument(
+        "-m",
+        "--merge",
+        help="Merges the user defined entries with the initial global configuration",
+        action='store_true',
+        default=False
+        )
+    # Set the function to run for this application.
+    config_parser.set_defaults(func=config.start)
+
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
     # Create subparsers for applications.
@@ -292,6 +328,7 @@ def create_flags():
     funpiler_flags(sub)
     pdfer_flags(sub)
     impro_flags(sub)
+    config_flags(sub)
     return p
 
 if __name__ == '__main__':

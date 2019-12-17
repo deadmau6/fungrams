@@ -317,7 +317,24 @@ class Configuration:
                 result_config.write(f)
 
     def start(self, args):
-        pass
+        if args.merge:
+            self.merge()
+        elif args.section:
+            # Displays a section.
+            self.show_section(args.section[0])
+        elif args.set and len(args.set) == 1:
+            # Adds a new section to local.ini.
+            self.set_section(args.set[0])
+        elif args.set and len(args.set) == 3:
+            # Adds/updates an entry in local.ini.
+            self.set_entry(args.set[0], args.set[1], args.set[2])
+        elif args.delete and len(args.delete) == 1:
+            self.delete_section(args.delete[0])
+        elif args.delete and len(args.delete) == 2:
+            self.delete_entry(args.delete[0], args.delete[1])
+        else:
+            # Default prints the current local.ini.
+            self.show_config()
 
     @staticmethod
     def merge_configs(changes, result, verbose=False):
