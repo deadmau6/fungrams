@@ -23,7 +23,7 @@ class Configuration:
     def _update_config(self):
         """Updates the local configuration on disk by writing it to the config.local.ini file."""
         with open(self.local_config_path, 'w+') as f:
-            self.Config.write(f)
+            self.config.write(f)
 
     def get_section(self, section):
         """Get the provided section as an object.
@@ -65,7 +65,7 @@ class Configuration:
 
         except configparser.DuplicateSectionError:
             return True, f'Warning: {section} already exists. Current sections: {self.config.sections()}.'
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             # This is a genuine error and this entire section cannot be added.
             return False, f"Failed to add section {section}. Check to be sure it is the correct Type(string) and that it is NOT 'Default' which is a key word and cannot be used!"
 
@@ -268,8 +268,89 @@ class Configuration:
             for k, v in self.config.items(sect):
                 print(f'\t{k} = {v}')
 
+    def merge(self, current, target=None, output=None, verbose=False):
+        """This will take the values in 'current' config and apply then to the 'target' config.
+
+        Nothing in the 'target' config is overwritten! Only new changes are added.
+        If 'target' is blank then the local config is used by default.
+        Both 'current' and 'target' can be file paths to other configs or a string representation of configs.
+        If 'target' is a string representation then 'output' SHOULD be provided so the config can write to disk.
+        If 'output' is not given the config will attempt to write to the home directory!"""
+        changes_config = configparser.ConfigParser()
+        if os.path.exists(current):
+            changes_config.read_file(open(current))
+        else:
+            try:
+                changes_config.read_string(current)
+            except configparser.MissingSectionHeaderError as e:
+                print(current)
+                print(e)
+                raise Exception(f"File not found, attempted to read data as Sting which then errored: {e}.")
+        result_config = None
+        if not target:
+            result_config = self.config
+        elif os.path.exists(target):
+            result_config = configparser.ConfigParser()
+            result_config.read_file(open(target))
+        else:
+            result_config = configparser.ConfigParser()
+            try:
+                result_config.read_string(target)
+            except configparser.MissingSectionHeaderError as e:
+                print(target)
+                print(e)
+                raise Exception(f"File not found, attempted to read data as Sting which then errored: {e}.")
+        result_config = Configuration.merge_configs(changes_config, result_config, verbose)
+        if not target:
+            with open(self.local_config_path, 'w+') as f:
+                result_config.write(f)
+        elif os.path.exists(target):
+            with open(target, 'w+') as f:
+                result_config.write(f)
+        elif os.path.exists(output):
+            with open(output, 'w+') as f:
+                result_config.write(f)
+        else:
+            home = os.getenv('HOME')
+            print(f'Output: {output} not found, attempting to write to HOME: {home}.')
+            with open(home, 'w+') as f:
+                result_config.write(f)
+
     def start(self, args):
         pass
+
+    @staticmethod
+    def merge_configs(changes, result, verbose=False):
+        """Given that 'changes' and 'results' are ConfigParser object's, this will apply 
+        the absent changes from 'changes' into 'result'.
+
+        Therefore 'result' keeps all of 'result' and then gets whatever is new in 'changes'.
+        The flag 'verbose' just prints out all of the values in 'changes' that were not written.
+        Returns - merged_result [configparser.ConfigParser] ."""
+        if not isinstance(changes, configparser.ConfigParser):
+            raise Exception(f"ERROR: 'changes' must be an instance of {type(configparser.ConfigParser())} not of {type(changes)}.")
+        if not isinstance(result, configparser.ConfigParser):
+            raise Exception(f"ERROR: 'result' must be an instance of {type(configparser.ConfigParser())} not of {type(result)}.")
+        skipped = {}
+        for section in changes.sections():
+            if not result.has_section(section):
+                result.add_section(section)
+            for entry, value in changes.items(section):
+                if result.has_option(section, entry):
+                    if section in skipped:
+                        skipped[section].append(entry)
+                    else:
+                        skipped[section] = [entry]
+                else:
+                    result.set(section, entry, value)
+        if verbose:
+            print('Successfully merged configs.')
+            if len(skipped.keys()) > 0:
+                print('The following entries were NOT changed. To overwrite them try manually adding the entries with "--force".')
+                for sect, entries in skipped.items():
+                    print(f"For Section [{sect}]:")
+                    print(f"\t{entries}")
+        return result 
 
     @staticmethod
     def create_config(file_path, options=None):
@@ -298,7 +379,7 @@ class Configuration:
                     if not isinstance(options[section], dict):
                         raise Exception(f"{section} must be of type 'dict' and not {type(options[section])}.") 
 
-                except TypeError, ValueError:
+                except (TypeError, ValueError):
                     # This is a genuine error and this entire section cannot be added.
                     errors.append(f"Failed to add section {section}. Check to be sure it is the correct Type(string) and that it is NOT 'Default' which is a key word and cannot be used!")
                 except Exception as e:
