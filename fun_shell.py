@@ -74,9 +74,9 @@ def things_flags(sub):
         default=False
         )
     things_tools.add_argument(
-        '-a',
-        '--author',
-        help="print quotes from an author",
+        '-s',
+        '--search',
+        help="Search and display quotes on the cmd.",
         type=str,
         default=False
         )
