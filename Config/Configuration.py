@@ -423,7 +423,7 @@ class Configuration:
         initial.add_section('OS')
         initial.set('OS', 'type', sys.platform)
         initial.add_section('PATHS')
-        initial.set('PATHS', 'home', os.getenv('HOME'))
+        initial.set('PATHS', 'home', str(os.getenv('HOME')))
 
         # Add the provided options which should be formatted as { Section: { Entry: Value, } }.
         if options and isinstance(options, dict):
