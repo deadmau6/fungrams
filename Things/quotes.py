@@ -37,8 +37,8 @@ class Quotes:
 		self._save_quote_db(author, quote)
 
 	@staticmethod
-	def _format_author(author):
-		return author.rstrip().lower().replace(' ', '-')
+	def _format_author(author, space='-'):
+		return author.rstrip().lower().replace(' ', space)
 
 	def quotes_by_author(self, author, printAll=False):
 		au = Quotes._format_author(author)
@@ -53,9 +53,13 @@ class Quotes:
 			print(random.choice(quotes))
 		self._append_quotes_db(au, quotes)
 
+	def search_quotes(self, search):
+		term = Quotes._format_author(search, '+')
+		page = self._page_content(f"search_results?q={term}")
+
+
 	def _save_quote_db(self, author, quote):
-		mongo = Mongo()
-		with mongo:
+		with Mongo() as mongo:
 			collect = mongo.client.fungrams[self.collection]
 			if not collect.find_one({"author": author, "quote": quote}):
 				collect.insert_one({"author": author, "quote": quote})
