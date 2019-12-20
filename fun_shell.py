@@ -286,33 +286,57 @@ def impro_flags(sub):
 def config_flags(sub):
     config = Configuration()
     # Config application descriptor.
-    config_parser = sub.add_parser("config", help="Configures 'cm' for the user's instance")
+    config_parser = sub.add_parser("config", help="Manages Configuration files for the user (case does not matter for section names only).")
     # Display section from local.ini file.
     config_parser.add_argument(
-        "-s",
-        "--section",
-        help="Print a section from the config file (case doesn't matter)",
-        nargs=1,
-        metavar=('SECT_NAME')
+        "-l",
+        "--list-section",
+        help="Print a section from the config file (case doesn't matter), if no arguement is given then the entire config file will be printed to console.",
+        nargs='?',
+        const=1,
+        default=False,
         )
     # Adds and updates sections and/or entries to local.ini.
     config_parser.add_argument(
         "--set",
-        help="if 1 argument is provided then it is added as a section. If 3 args are provided then the entry SECT KEY VALUE is added/updated",
+        help="If 1 argument is provided then it is added as a section. If 3 args are provided then the entry SECT KEY VALUE is added/updated.",
         nargs='+'
         )
     # Deletes sections and/or entries from local.ini.
     config_parser.add_argument(
-        "-d",
+        "-D",
         "--delete",
-        help="if 1 argument is provided then the section is deleted. If 2 args are provided then the entry SECT KEY VALUE is deleted",
+        help="If 1 argument is provided then the section is deleted. If 2 args are provided then the entry SECT KEY VALUE is deleted.",
         nargs='+'
         )
     # Returns the initial local fields established in the config.setup().
     config_parser.add_argument(
         "-m",
         "--merge",
-        help="Merges the user defined entries with the initial global configuration",
+        help="""Merges two config files (CURRENT into TARGET) and then ouputs them to a single file (OUTPUT).
+        If TARGET is Empty then the local config is used. If TARGET is Not a File and OUTPUT is not provided, 
+        the config will attempt to write to the HOME directory labeled as 'fungrams.config.ini'.""",
+        nargs='+',
+        metavar=('DATA'),
+        default=False
+        )
+    # Returns the initial local fields established in the config.setup().
+    config_parser.add_argument(
+        "-d",
+        "--data",
+        help="""Dynamically adds json formatted data to the config file. 
+        The data can be a string with json format like so '{"section": {"entry": "value"} }'.
+        You can also provide a json file that follows the same format.""",
+        type=str,
+        default=False
+        )
+    # Set the overwrite value when adding data
+    config_parser.add_argument(
+        "-f",
+        "--force",
+        help="""When setting/adding data to the config file this flag forces the added data to 
+        overwrite any existing values in the config. This only applies to entry values, section names
+        and entry names cannot be overwritten.(Also everything is parsed in as a string)""",
         action='store_true',
         default=False
         )

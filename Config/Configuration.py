@@ -1,4 +1,8 @@
-import os, sys, time, configparser
+import os
+import sys
+import json
+import time
+import configparser
 
 class Configuration:
     """This Class gets and sets user defined constants to a local ini file."""
@@ -82,7 +86,7 @@ class Configuration:
         if error or overwrite:
             self.config.set(section.upper(), entry, value)
             if immediate_update:
-                self.update_config()
+                self._update_config()
             return True, f'Successfully added entry [{section}] {entry} = {value}'
         # Do not overwrite the entry.
         return False, f'Warning: {entry} already exists with {val}.'
@@ -114,7 +118,7 @@ class Configuration:
             # All entries where added.
             return True, "Successfully added all of the entries."
 
-        print(f'There are {len(existing_entries.keys())} entries that already exist.')
+        print(f'There are {len(existing.keys())} entries that already exist.')
         print('Would you like to overwrite all of them(y), None of them(n), or select each one to overwrite(s)?')
         overwrite_choice = 0
         while True:
@@ -142,13 +146,14 @@ class Configuration:
                 print(msg)
             return True, f"All existing entries have been overwritten."
         # User Selects which entries to overwrite.
+        existing_entries = list(existing.keys())
         while True:
             
-            if len(existing.keys()) == 0:
+            if len(existing_entries) == 0:
                 break
             time.sleep(0.1)
 
-            entry = existing.keys()[0]
+            entry = existing_entries[-1]
             current_val = existing[entry]
             overwrite_val = entries[entry]
 
@@ -156,11 +161,11 @@ class Configuration:
             answer = sys.stdin.readline().lower()
             
             if answer[0] == 'y':
-                existing.pop(entry)
+                existing_entries.pop(-1)
                 is_set, msg = self.set_entry(section, entry, overwrite_val, True, False)
                 print(msg)
             elif answer[0] =='n':
-                existing.pop(entry)
+                existing_entries.pop(-1)
                 print(f"Keeping {entry} as {current_val}.")
             else:
                 print('Please answer with "yes"(y), "no"(n)')
@@ -184,7 +189,7 @@ class Configuration:
         if isinstance(sections, dict):
             for sect, entries in sections.items():
                 # _add_entries() will also add the section and verify that entries is a dict.
-                sucess, message = self._add_entries(sect, entries, overwrite)
+                success, message = self._add_entries(sect, entries, overwrite)
                 if success:
                     print(f"Successfully created Section: {sect}.")
                 else:
@@ -211,7 +216,7 @@ class Configuration:
 
     def delete_section(self, section):
         """Delete the entire given section."""
-        if show_section(section):
+        if self.show_section(section):
             print('Are you sure you wish to delete this section?(y/n)')
             while True:
                 time.sleep(0.2)
@@ -311,29 +316,67 @@ class Configuration:
             with open(output, 'w+') as f:
                 result_config.write(f)
         else:
-            home = os.getenv('HOME')
+            home = os.path.join(os.getenv('HOME'), 'fungrams.config.ini')
             print(f'Output: {output} not found, attempting to write to HOME: {home}.')
-            with open(home, 'w+') as f:
+            with open(home, 'w') as f:
                 result_config.write(f)
 
     def start(self, args):
-        if args.merge:
-            self.merge()
-        elif args.section:
-            # Displays a section.
-            self.show_section(args.section[0])
-        elif args.set and len(args.set) == 1:
-            # Adds a new section to local.ini.
-            self.set_section(args.set[0])
-        elif args.set and len(args.set) == 3:
-            # Adds/updates an entry in local.ini.
-            self.set_entry(args.set[0], args.set[1], args.set[2])
-        elif args.delete and len(args.delete) == 1:
-            self.delete_section(args.delete[0])
-        elif args.delete and len(args.delete) == 2:
-            self.delete_entry(args.delete[0], args.delete[1])
+        if args.list_section:
+            # List all sections
+            if isinstance(args.list_section, int):
+                self.show_config()
+            else:
+                self.show_section(args.list_section)
+        elif args.set:
+            size = len(args.set)
+            if size == 1:
+                # Adds a new section to local.ini.
+                self.set_section(args.set[0])
+            elif size == 3:
+                # Adds/updates an entry in local.ini.
+                self.set_entry(args.set[0], args.set[1], args.set[2], overwrite=args.force)
+            elif size > 3:
+                print(f"To many args found, only attempting to set these values: {args.set[:3]}.")
+                # Adds/updates an entry in local.ini.
+                self.set_entry(args.set[0], args.set[1], args.set[2], overwrite=args.force)
+            else:
+                print(f"ERROR: Not enough Arguements provided. 1 or 3 are required but only recieved {size} - {args.set}.")
+        elif args.delete:
+            size = len(args.delete)
+            if size == 1:
+                # Removes section from local.ini.
+                self.delete_section(args.delete[0])
+            elif size > 2:
+                print(f"To many args found, only attempting to remove these values: {args.delete[:2]}.")
+                # Removes entry from local.ini.
+                self.delete_entry(args.delete[0], args.delete[1])
+            else:
+                # Removes entry from local.ini.
+                self.delete_entry(args.delete[0], args.delete[1])
+        elif args.merge:
+            size = len(args.merge)
+            # Merges given config into the local config.
+            if size > 3:
+                print(f"To many args found, only attempting to use these values: {args.merge[:3]}.")
+                self.merge(args.merge[0], args.merge[1], args.merge[2])
+            elif size == 3:
+                self.merge(args.merge[0], args.merge[1], args.merge[2])
+            elif size == 2:
+                self.merge(args.merge[0], args.merge[1])
+            else:
+                self.merge(args.merge[0])
+        elif args.data:
+            cleaned = None
+            if os.path.exists(args.data):
+                # Everything is parsed in as a string.
+                cleaned = json.load(args.data, parse_int=str, parse_float=str, parse_constant=str)
+            else:
+                # Everything is parsed in as a string.
+                cleaned = json.loads(args.data, parse_int=str, parse_float=str, parse_constant=str)
+            self.add_sections(cleaned, overwrite=args.force)
         else:
-            # Default prints the current local.ini.
+            # Default show config.
             self.show_config()
 
     @staticmethod
