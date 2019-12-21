@@ -5,7 +5,7 @@ This is a not a repo! It is, what I call a "My Code Gallery". It is supposed to 
 ### Final Warning:
 
 Engineered perfection is _fanciful_, life is _messy_, and _"free"_ time is a elusive. Therefore this repo is maintained by pure chaos! Good luck straining this spagetti farm. You'll find no conventions here, especially for _"names"_.
-If you run something and it errors then that feature is depreciated. If nothing happens at all then the program is probably waiting for the secret key command(`Ctrl-C`). And if by some miracle there is a coherent output, then congradulations you did it! That's it, that's all it does.
+If you run something and it errors then that feature is depreciated. If nothing happens at all then the program is probably waiting for the secret key command(`Ctrl-C`). And if by some miracle there is a coherent output, then congratulations you did it! That's it, that's all it does.
 
 ### Not Convinced? Check out these ~~distressing flaws~~ selling points!
 
