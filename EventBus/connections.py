@@ -1,26 +1,6 @@
-from kazoo.client import KazooClient
 from pymongo import MongoClient
 
-__all__ = ['Mongo', 'ZooKeeper']
-
-
-class ZooKeeper(object):
-    """
-    Context manager for ZooKeeper client connections
-    """
-
-    def __init__(self, host='localhost', port=2181):
-        self._host = host
-        self._port = port
-
-    def __enter__(self):
-        self._client = KazooClient(f'{self._host}:{self._port}')
-        self._client.start()
-        return self._client
-
-    def __exit__(self, typ, value, traceback):
-        self._client.stop()
-        self._client.close()
+__all__ = ['Mongo']
 
 
 class Mongo:
