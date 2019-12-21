@@ -74,13 +74,19 @@ def things_flags(sub):
         default=False
         )
     things_tools.add_argument(
-        '-s',
+        '-S',
         '--search',
         help="Search and display quotes on the cmd.",
         type=str,
         default=False
         )
-    
+    things_parser.add_argument(
+        '-l',
+        '--search-limit',
+        help="Set the search limit that will be displayed in the terminal.(default: %(default)s)",
+        type=int,
+        default=5
+        )
     things_parser.add_argument(
         '-s',
         '--start',
