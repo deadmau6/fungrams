@@ -27,13 +27,13 @@ class Quotes:
     def qotd(self):
         page = self._page_content('quote_of_the_day')
         soup = BeautifulSoup(page, 'lxml')
-        container = soup.find('div', 'container bqQOTD')
+        container = soup.find('div', 'qotd_days m_panel')
         q_link = container.find('a', 'oncl_q')
         q_href = q_link.attrs['href']
         q_img = q_link.contents[0]
         qotd = q_img.attrs['alt']
         print(qotd)
-        sep = qotd.rsplit('-')
+        sep = qotd.rsplit(' - ', 1)
         quote = sep[0].rstrip()
         author = sep[1].lstrip()
         self._save_quote_db(author, quote)
