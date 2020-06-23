@@ -17,7 +17,7 @@ class ImageController:
 
     def read_file(self, fname):
         return cv.imread(fname, cv.IMREAD_UNCHANGED)
-
+        
     def _value_check(self, value):
         if re.match(self.float_re, value):
             return float(value)
@@ -100,6 +100,7 @@ class ImageController:
             print('Done')
             return
         image = Image(self.read_file(args.file))
+        
         if args.operations:
             ops =[self._operation_object(opr_string) for opr_string in args.operations]
             image.do_operations(ops)
