@@ -1,6 +1,6 @@
 """This file is only used to test the manager."""
 from multiprocessing import freeze_support
-from EventBus.manager import Manager
+from Services.EventBus import Manager
 
 if __name__ == '__main__':
     freeze_support()

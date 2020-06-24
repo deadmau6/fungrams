@@ -1,4 +1,4 @@
-from Socket import MySocket
+from Services.Socket import MySocket
 import time
 
 def test_packet_conversion(message="Hi", packet_size=16):
