@@ -1,9 +1,9 @@
-from DynamicPrograms import Dynamic
-from Things import Things
-from Funpiler import Funpiler
-from PDFer import PDFer
-from ImageProcessing import ImageController
-from Config import Configuration
+from Services.DynamicPrograms import Dynamic
+from Services.Things import Things
+from Services.Funpiler import Funpiler
+from Services.PDFer import PDFer
+from Services.ImageProcessing import ImageController
+from Services.Config import Configuration
 import argparse
 
 def dp_flags(sub):
