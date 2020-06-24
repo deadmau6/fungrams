@@ -1,4 +1,3 @@
-from .quotes import Quotes
 import random
 
 class Things:
@@ -64,12 +63,7 @@ class Things:
             print("Invalid range, the start must be less than the end.")
 
     def start(self, args):
-        brainy_quote = Quotes()
         if args.pennys_game:
             Things.pennys_game()
         elif args.gauss_trick:
             Things.gauss_trick(args.start, args.end)
-        elif args.search:
-            brainy_quote.find_quotes(args.search, args.search_limit)
-        else:
-            brainy_quote.qotd()
