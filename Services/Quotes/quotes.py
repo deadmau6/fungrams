@@ -8,7 +8,7 @@ import sys
 import re
 
 class Quotes:
-    """Get famous quotes and stuff from this website: https://www.brainyquote.com/"""
+    """Get famous quotes from this website: https://www.brainyquote.com/"""
     def __init__(self):
         self._base_url = 'https://www.brainyquote.com/'
         self.collection = 'QUOTES'
