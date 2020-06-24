@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from requests.exceptions import HTTPError
-from .connections import Mongo
+from ..connections import Mongo
 from pprint import pprint
 import requests
 import random
