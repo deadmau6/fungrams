@@ -3,7 +3,6 @@ from requests.exceptions import HTTPError
 from ..connections import Mongo
 from ..pretty_term import cprint
 import requests
-import random
 import time
 import sys
 import re
