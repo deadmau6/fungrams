@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from requests.exceptions import HTTPError
 from ..connections import Mongo
-from pprint import pprint
+from ..pretty_term import cprint
 import requests
 import random
 import time
@@ -32,7 +32,7 @@ class Quotes:
         q_href = q_link.attrs['href']
         q_img = q_link.contents[0]
         qotd = q_img.attrs['alt']
-        print(qotd)
+        cprint(qotd, 'bold')
         sep = qotd.rsplit(' - ', 1)
         quote = sep[0].rstrip()
         author = sep[1].lstrip()
