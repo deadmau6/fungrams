@@ -4,6 +4,7 @@ from Services.Funpiler import Funpiler
 from Services.PDFer import PDFer
 from Services.ImageProcessing import ImageController
 from Services.Config import Configuration
+import Services.History as History
 import argparse
 
 def dp_flags(sub):
@@ -349,6 +350,39 @@ def config_flags(sub):
     # Set the function to run for this application.
     config_parser.set_defaults(func=config.start)
 
+def history_flags(sub):
+    history_parser = sub.add_parser("history", help="Fetches historical passages from various history websites.")
+    history_parser.add_argument(
+        "-w",
+        "--website",
+        help="Which history website to pull passages from.(currently only 'history channel' is available)",
+        type=str,
+        default='history channel'
+        )
+    history_parser.add_argument(
+        "-t",
+        "--today",
+        help="Take at peak at some of the historical events that occurred today.(default True)",
+        action='store_true',
+        default=True
+        )
+    history_parser.add_argument(
+        "-f",
+        "--featured",
+        help="View the featured historical event that occurred today.(default False)",
+        action='store_true',
+        default=False
+        )
+    history_parser.add_argument(
+        "-e",
+        "--events",
+        help="View multiple historical events that occurred today.(default False)",
+        action='store_true',
+        default=False
+        )
+    # Set the function to run for this application.
+    history_parser.set_defaults(func=History.start)
+
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
     # Create subparsers for applications.
@@ -359,6 +393,7 @@ def create_flags():
     pdfer_flags(sub)
     impro_flags(sub)
     config_flags(sub)
+    history_flags(sub)
     return p
 
 if __name__ == '__main__':
