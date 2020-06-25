@@ -6,6 +6,7 @@ from Services.ImageProcessing import ImageController
 from Services.Config import Configuration
 import Services.History as History
 import Services.Quotes as Quotes
+import Services.WakeUp as WakeUp
 import argparse
 
 def dp_flags(sub):
@@ -388,6 +389,58 @@ def quotes_flags(sub):
         )
     quote_parser.set_defaults(func=Quotes.start)
 
+def wakeup_flags(sub):
+    wakeup_parser = sub.add_parser("wakeup", help=WakeUp.description)
+    # Confilcting arguments are mutually exclusive
+    wakeup_tools = wakeup_parser.add_mutually_exclusive_group()
+    wakeup_tools.add_argument(
+        '-a',
+        '--add',
+        help="Add a new command with '-c *command_name -a *command' or create a new command group with '-g *group_name -a *command_A *command_B ...etc'.",
+        nargs='+',
+        metavar='CMD',
+        default=[]
+        )
+    wakeup_tools.add_argument(
+        '-u',
+        '--update',
+        help="Update a command with '-c *command_name -u *command' or update/reorder a command group with '-g *group_name -u *command_B *command_A ...etc'.",
+        nargs='+',
+        metavar='CMD',
+        default=[]
+        )
+    wakeup_parser.add_argument(
+        '-c',
+        '--command',
+        help="Run, update(-u), or add(-a) a single command. If provided without update or add the default behavior is to run the command.",
+        type=str,
+        default=None
+        )
+    wakeup_parser.add_argument(
+        '-g',
+        '--group',
+        help="Run, update(-u), or add(-a) a group command. If provided without update or add the default behavior is to run the command.",
+        type=str,
+        default='default'
+        )
+    wakeup_parser.add_argument(
+        '-l',
+        '--list',
+        help="Show what commands and group commands are available.",
+        action='store_true',
+        default=False
+        )
+    wakeup_parser.add_argument(
+        '-t',
+        '--timeout',
+        help="Time in seconds to wait for a single command to finish.(range 60 - 360)(default: %(default)s)",
+        type=int,
+        choices=range(60, 361),
+        metavar="(60, ..., 360)",
+        default=60
+        )
+    wakeup_parser.set_defaults(func=WakeUp.start)
+
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
     # Create subparsers for applications.
@@ -400,6 +453,7 @@ def create_flags():
     config_flags(sub)
     history_flags(sub)
     quotes_flags(sub)
+    wakeup_flags(sub)
     return p
 
 if __name__ == '__main__':
