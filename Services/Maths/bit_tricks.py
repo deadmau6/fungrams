@@ -300,6 +300,33 @@ def pseudo_gradient_descent(point, step_size, threshold):
         return value
     return pseudo_gradient_descent(new_point, step_size, threshold)
 
+def init_primes(limit=1000):
+    # sieve_of_eratosthenes
+    marked = []
+    p = 2
+    while p ** 2 <= limit:
+        if p not in marked:
+            for i in range(p**2, limit+1, p):
+                marked.append(i)
+        p += 1
+    primes = [x for x in range(2, limit) if x not in marked]
+    return primes
+
+def is_prime(num, primes=[]):
+    if num in primes:
+        return True
+    if num < 2:
+        return False
+    if num % 2 == 0 or num % 3 == 0:
+        return False
+    p = 5
+    while p ** 2 <= num:
+        if num % p == 0 or num % (p + 2) == 0:
+            return False
+        p += 6
+    #primes.append(num)
+    return True
+
 if __name__ == "__main__":
     #print(bit_bounds(5, 10))
     #print(bit_bounds(5, -10))
