@@ -1,25 +1,35 @@
 from ..Config import Configuration
-from .commander import Commander
+from ..commander import Commander
 from ..pretty_term import cprint
 
-class WakeUp(Commander):
+class WakeUp:
     """Manage and run user defined commands from a single source"""
     def __init__(self, **kwargs):
         super().__init__()
         self.section_name = 'WAKEUP'
         self.config = Configuration()
+        self._setup_check()
+
+    def _create_default(self):
+        self.config.set_entry(self.section_name, 'default', '0', True, False)
+        self.config.set_entry(self.section_name, '0', "echo 'Running default commands:'", True, True)
+        # If there were no errors in the previous lines then this should not error.
+        err, sect = self.config.get_section(self.section_name)
+
+    def _setup_check(self):
+        """Check that this has been setup, if not create defaults."""
+        err, sect = self.config.get_section(self.section_name)
+        if err or 'default' not in sect:
+            self._create_default()
 
     def get_config(self):
         err, sect = self.config.get_section(self.section_name)
         if err:
-            self.config.set_entry(self.section_name, 'default', '0', True, False)
-            self.config.set_entry(self.section_name, '0', "echo 'Running default wakeup commands:'", True, True)
-            # If there were no errors in the previous lines then this should not error.
-            err, sect = self.config.get_section(self.section_name)
+            self._create_default()
         return sect
 
     def _run_command(self, cmd, timeout):
-        return self.run(
+        return Commander.run(
             cmd.get('command'),
             cmd.get('op_name', 'User command'),
             cmd.get('path'),
