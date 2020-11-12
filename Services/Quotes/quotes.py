@@ -1,4 +1,4 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from requests.exceptions import HTTPError
 from ..connections import Mongo
 from ..pretty_term import cprint
@@ -29,8 +29,11 @@ class Quotes:
         container = soup.find('div', 'qotd_days m_panel')
         q_link = container.find('a', 'oncl_q')
         q_href = q_link.attrs['href']
-        q_img = q_link.contents[0]
-        qotd = q_img.attrs['alt']
+        qotd = None
+        for content in q_link.contents:
+            if isinstance(content, Tag):
+                qotd = content.attrs['alt']
+                break
         cprint(qotd, 'bold')
         sep = qotd.rsplit(' - ', 1)
         quote = sep[0].rstrip()
@@ -109,6 +112,8 @@ class Quotes:
         return complete
 
     def _save_quote_db(self, author, quote):
+        if not Mongo().is_alive:
+            return
         normalized_author = Quotes._format_author(author)
         with Mongo() as mongo:
             collect = mongo.client.fungrams[self.collection]
@@ -116,6 +121,8 @@ class Quotes:
                 collect.insert_one({"author": normalized_author, "quote": quote})
 
     def _append_quotes_db(self, author, quotes):
+        if not Mongo().is_alive:
+            return
         normalized_author = Quotes._format_author(author)
         with Mongo() as mongo:
             collect = mongo.client.fungrams[self.collection]
@@ -128,6 +135,8 @@ class Quotes:
                 collect.insert_many(q_insert)
 
     def _object_quotes_db(self, quotes):
+        if not Mongo().is_alive:
+            return
         with Mongo() as mongo:
             collect = mongo.client.fungrams[self.collection]
             for a,q in quotes.items():
