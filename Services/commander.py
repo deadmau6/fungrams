@@ -6,7 +6,8 @@ class Commander:
     def __init__(self):
         pass
 
-    def check_server(self, server, port):
+    @staticmethod
+    def check_server(server, port):
         nc = Popen(["nc", "-zv", server, port], stdout=PIPE, stderr=PIPE)
         is_success = (nc.communicate()[1].find(b'failed') == -1)
         return is_success
@@ -63,7 +64,8 @@ class Commander:
             # Stop the thread.
             t.join()
 
-    def run(self, command, op_name='User command', path=None, env=None, timeout=60):
+    @staticmethod
+    def run(command, op_name='User command', path=None, env=None, timeout=60):
         proc = Popen(command, cwd=path, env=env)
         try:
             rc = proc.wait(timeout=timeout)

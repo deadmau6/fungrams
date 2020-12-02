@@ -1,3 +1,4 @@
+from .commander import Commander
 from pymongo import MongoClient
 
 
@@ -17,3 +18,12 @@ class Mongo:
 
     def __exit__(self, type, value, traceback):
         self.client.close()
+
+    @property
+    def is_alive(self):
+        if not hasattr(self, '_is_alive'):
+            self._is_alive = Commander.check_server(self.host, self.port)
+        return self._is_alive
+
+    def revive(self):
+        self._is_alive = Commander.check_server(self.host, self.port)
