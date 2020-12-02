@@ -5,6 +5,7 @@ from Services.PDFer import PDFer
 from Services.ImageProcessing import ImageController
 from Services.Config import Configuration
 import Services.History as History
+import Services.Quotes as Quotes
 import argparse
 
 def dp_flags(sub):
@@ -73,20 +74,6 @@ def things_flags(sub):
         help=Things.pennys_game.__doc__,
         action='store_true',
         default=False
-        )
-    things_tools.add_argument(
-        '-S',
-        '--search',
-        help="Search and display quotes on the cmd.",
-        type=str,
-        default=False
-        )
-    things_parser.add_argument(
-        '-l',
-        '--search-limit',
-        help="Set the search limit that will be displayed in the terminal.(default: %(default)s)",
-        type=int,
-        default=5
         )
     things_parser.add_argument(
         '-s',
@@ -383,6 +370,24 @@ def history_flags(sub):
     # Set the function to run for this application.
     history_parser.set_defaults(func=History.start)
 
+def quotes_flags(sub):
+    quote_parser = sub.add_parser("quotes", help=Quotes.description)
+    quote_parser.add_argument(
+        '-s',
+        '--search',
+        help="Search and display quotes on the cmd.",
+        type=str,
+        default=False
+        )
+    quote_parser.add_argument(
+        '-l',
+        '--search-limit',
+        help="Set the search limit that will be displayed in the terminal.(default: %(default)s)",
+        type=int,
+        default=5
+        )
+    quote_parser.set_defaults(func=Quotes.start)
+
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
     # Create subparsers for applications.
@@ -394,6 +399,7 @@ def create_flags():
     impro_flags(sub)
     config_flags(sub)
     history_flags(sub)
+    quotes_flags(sub)
     return p
 
 if __name__ == '__main__':
