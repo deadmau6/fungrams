@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from requests.exceptions import HTTPError
+from pprint import pprint
 import datetime as dt
 import requests
 
@@ -51,7 +52,7 @@ class HistoryChannel:
         }
 
     def get_events(self, container):
-        group_content = container.find_all('div', 'm-card-group--content')
+        group_content = container.find_all(class_='m-card-group--content')
         elements = []
         for content in group_content:
             elements.extend(content.find_all('div', 'l-grid--item'))
