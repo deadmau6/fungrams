@@ -63,7 +63,7 @@ class WakeUp:
 
     def process_single_command(self, cmd_key, timeout):
         cmds_object = self.get_config()
-        self._process_command(cmd, timeout, cmds_object)
+        self._process_command(cmd_key, timeout, cmds_object)
 
     def process_group_command(self, group_key, timeout):
         # Runs a command group which is just an ordered string of command keys separated with semicolons

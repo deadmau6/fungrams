@@ -4,6 +4,7 @@ from Services.Funpiler import Funpiler
 from Services.PDFer import PDFer
 from Services.ImageProcessing import ImageController
 from Services.Config import Configuration
+from Services.Maths import CodeBook
 import Services.History as History
 import Services.Quotes as Quotes
 import Services.WakeUp as WakeUp
@@ -441,6 +442,57 @@ def wakeup_flags(sub):
         )
     wakeup_parser.set_defaults(func=WakeUp.start)
 
+def code_book_flags(sub):
+    code_book_parser = sub.add_parser("codebook", help=CodeBook.__doc__)
+    # Confilcting arguments are mutually exclusive
+    code_book_tools = code_book_parser.add_mutually_exclusive_group()
+    code_book_tools.add_argument(
+        '-e',
+        '--encrypt',
+        help="Determines that the message will be encrypted.",
+        action='store_true',
+        default=True
+        )
+    code_book_tools.add_argument(
+        '-d',
+        '--decrypt',
+        help="Determines that the message will be decrypted.",
+        action='store_false',
+        default=True,
+        dest='encrypt'
+        )
+    code_book_parser.add_argument(
+        '-c',
+        '--cipher',
+        help="Which cipher to use.",
+        type=str,
+        choices=CodeBook.allowed_methods,
+        default=CodeBook.allowed_methods[0]
+        )
+    code_book_parser.add_argument(
+        '-m',
+        '--message',
+        help="Plain Text message to be encrypted or decrypted.",
+        type=str,
+        default='default'
+        )
+    code_book_parser.add_argument(
+        '-p',
+        '--params',
+        help='Input parameters that get passed to the cipher function.',
+        nargs='*',
+        metavar="KEY=VALUE",
+        default=[]
+        )
+    code_book_parser.add_argument(
+        '-v',
+        '--verbose',
+        action='count',
+        help='Print out the description of the cipher.',
+        default=0
+        )
+    code_book_parser.set_defaults(func=CodeBook.start)
+
 def create_flags():
     p = argparse.ArgumentParser(prog="FUN", description='Run rando funscripts with shell.')
     # Create subparsers for applications.
@@ -454,6 +506,7 @@ def create_flags():
     history_flags(sub)
     quotes_flags(sub)
     wakeup_flags(sub)
+    code_book_flags(sub)
     return p
 
 if __name__ == '__main__':

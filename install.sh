@@ -5,7 +5,7 @@ if ! [ -x "$( command -v python3 )" ]; then
     exit 1
 fi
 
-if ! [ -x "$( command -v pip )" ]; then
+if ! [ -x "$( command -v pip3 || command -v pip )" ]; then
     echo "Error: pip not installed."
     exit 1
 fi
