@@ -44,7 +44,7 @@ def start(args):
     tih = None
     if args.website == 'history channel':
         tih = HistoryChannel()
-    feat, events = tih.get_history_data()
+    feat, events = tih.get_history_data(args)
     if args.featured:
         display_feat(feat)
     if args.events:

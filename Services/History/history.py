@@ -70,11 +70,17 @@ class HistoryChannel:
 
 
 
-    def get_history_data(self):
+    def get_history_data(self, args):
         page = self._page_content(f"{self._base_url}/this-day-in-history")
         soup = BeautifulSoup(page, 'lxml')
-        feature = self.get_feature(soup.find('article', 'mm-feature'))
-        events = self.get_events(soup.find('section', 'm-list-hub').find('section', 'm-card-group-container'))
+        #
+        feature = None
+        if args.featured:
+            feature = self.get_feature(soup.find('article', 'm-story'))
+        #
+        events = None
+        if args.events:
+            events = self.get_events(soup.find('section', 'm-list-hub').find('phoenix-hub', 'm-card-group--container'))
         return feature, events
         
 # TODO:
