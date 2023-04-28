@@ -10,17 +10,16 @@ def display_events(events):
         cprint(intro, 'green')
         cprint(event['title'], 'bold', 'blue')
         cprint(header_line, 'dark_gray')
-        cprint(event['summary'])
+        # cprint(event['summary'])
         cprint(event['link'], 'light_cyan')
         cprint()
 
 def display_feat(feat):
     print()
     citation = feat.get('citation', {})
-    title = citation.get('Article Title', {})
     body = feat['body']
     links = []
-    cprint(f"\t{title.get('text', 'Today in History')}", 'yellow', 'bold', 'underline')
+    cprint(f"\t{feat.get('title', 'Today in History')}", 'yellow', 'bold', 'underline')
     print()
     for section in body:
         if section.get('links'):
