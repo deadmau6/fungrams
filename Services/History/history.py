@@ -3,6 +3,7 @@ from requests.exceptions import HTTPError
 from pprint import pprint
 import datetime as dt
 import requests
+from pprint import pprint
 
 class HistoryChannel:
     def __init__(self):
@@ -17,18 +18,23 @@ class HistoryChannel:
         except Exception as e:
             raise e
 
+    def feature_title(self, content):
+        feature_year = content.find('p', 'tdih-featured__year')
+        feature_title = content.find('span', 'tdih-featured__title')
+        return f"{feature_year.text}  {feature_title.text}"
+
     def feature_citation(self, footer):
-        citation_elements = footer.find('aside', 'm-detail--citation').find_all('div', 'm-detail--citation-meta')
+        citation_elements = footer.find('aside', 'article-sources').find_all('div', 'article-sources__pair')
         citation = {}
         for element in citation_elements:
-            if element.h3.text == 'Access Date':
-                citation[element.h3.text] = { 'text': str(dt.datetime.today().date())}
-            elif element.p.a:
-                link = element.p.a.get('href')
+            title = element.dt.text
+            if title == 'URL':
+                link = element.dd.a.get('href')
                 link = link if link.startswith('http') else f"{self._base_url}{link}"
-                citation[element.h3.text] = { 'text': element.p.a.text, 'link': link }
+                citation[title] = { 'text': element.dd.a.text, 'link': link }
             else:
-                citation[element.h3.text] = { 'text': element.p.text }
+                description = element.dd.text
+                citation[title] = { 'text': description }
         return citation
 
     def feature_body(self, body):
@@ -42,33 +48,45 @@ class HistoryChannel:
                 paragraphs.append({'text': element.text,})
         return paragraphs
 
-    def get_feature(self, article):
-        feature_content = article.find('div', 'm-detail--contents').find('div', 'l-grid--content-body')
-        feature_body = self.feature_body(feature_content.find('div', 'm-detail--body'))
-        feature_citation = self.feature_citation(feature_content.find('footer', 'm-detail--footer'))
+    def get_feature_data(self, article):
+        #
+        featured_content = article.find('div', 'tdih-featured')
+        title_content = featured_content.find('div', 'tdih-featured__content').find('div', 'featured-content-card')
+        feature_title = self.feature_title(title_content)
+        #
+        article_content = article.find('div', 'article-content-box')
+        body_content = article_content.find('div', 'article-content')
+        feature_body = self.feature_body(body_content)
+        #
+        footer_content = article_content.find('footer', 'article-footer')
+        feature_citation = self.feature_citation(footer_content)
         return {
+            'title': feature_title,
             'citation': feature_citation,
             'body': feature_body,
         }
 
+    def get_feature(self, feature_content):
+        content = feature_content.find('div', 'tdih-featured__content').find('div', 'featured-content-card')
+        link = content.find('a', 'featured-content-card__link')
+        feature_link = link.get('href') if link.get('href').startswith('http') else f"{self._base_url}{link.get('href')}"
+        #
+        feature_page = self._page_content(feature_link)
+        feature_soup = BeautifulSoup(feature_page, 'lxml')
+        return self.get_feature_data(feature_soup.find('article', 'article'))
+
     def get_events(self, container):
-        group_content = container.find_all(class_='m-card-group--content')
-        elements = []
-        for content in group_content:
-            elements.extend(content.find_all('div', 'l-grid--item'))
-        contents = [e.find('div', 'm-card--content') for e in elements]
+        group_content = container.find_all(class_='tdih-posts-grid__article')
         events = []
-        for content in contents:
-            year = content.find('div', 'mm-card--tdih-year')
-            link = year.a.get('href')
+        for content in group_content:
+            year = content.find('span', 'tdih-posts-grid__article-year').text
+            article_link = content.find('a', 'tdih-posts-grid__article-link')
+            title = article_link.text
+            link = article_link.get('href')
             link = link if link.startswith('http') else f"{self._base_url}{link}"
-            topic = content.find('div', 'm-card--label')
-            title = content.find('h2', 'm-card--header-text')
-            summary = content.find('p', 'm-card--body')
-            events.append({'title':title.text, 'summary':summary.text, 'year':year.text, 'topic':topic.text, 'link': link })
+            topic = content.find('a', 'tdih-posts-grid__article-meta').text
+            events.append({ 'title':title, 'year':year, 'topic': topic, 'link': link })
         return events
-
-
 
     def get_history_data(self, args):
         page = self._page_content(f"{self._base_url}/this-day-in-history")
@@ -76,11 +94,11 @@ class HistoryChannel:
         #
         feature = None
         if args.featured:
-            feature = self.get_feature(soup.find('article', 'm-story'))
+            feature = self.get_feature(soup.find('div', 'tdih-featured'))
         #
         events = None
         if args.events:
-            events = self.get_events(soup.find('section', 'm-list-hub').find('phoenix-hub', 'm-card-group--container'))
+            events = self.get_events(soup.find('div', 'tdih-posts').find('div', 'tdih-posts-grid'))
         return feature, events
         
 # TODO:
