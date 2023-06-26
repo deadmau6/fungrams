@@ -84,7 +84,8 @@ class HistoryChannel:
             title = article_link.text
             link = article_link.get('href')
             link = link if link.startswith('http') else f"{self._base_url}{link}"
-            topic = content.find('a', 'tdih-posts-grid__article-meta').text
+            topic_content = content.find('a', 'tdih-posts-grid__article-meta')
+            topic = getattr(topic_content, 'text') if hasattr(topic_content, 'text') else "Other"
             events.append({ 'title':title, 'year':year, 'topic': topic, 'link': link })
         return events
 

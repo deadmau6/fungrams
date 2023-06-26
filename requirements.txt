@@ -7,3 +7,4 @@ pytesseract
 beautifulsoup4
 matplotlib
 opencv-python
+requests
